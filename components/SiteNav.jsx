@@ -10,6 +10,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/register", label: "Register" },
   { href: "/bracketing", label: "Bracketing" },
+  { href: "/check-registration", label: "Check Registration" },
 ];
 
 export default function SiteNav() {
