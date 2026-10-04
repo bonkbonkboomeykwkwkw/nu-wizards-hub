@@ -14,7 +14,6 @@ export default function SignupPage() {
     event.preventDefault(); setBusy(true); setError(""); setMessage("");
     const { error: authError } = await getSupabaseBrowserClient().auth.signUp({
       email, password,
-      options: { emailRedirectTo: `${window.location.origin}/login` },
     });
     if (authError) setError(authError.message);
     else router.replace("/?signup=check-email");

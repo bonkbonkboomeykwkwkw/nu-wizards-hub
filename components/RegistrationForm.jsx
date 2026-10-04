@@ -125,8 +125,12 @@ export default function RegisterPage() {
     try {
       const response = await fetch("/api/registrations", {
         method: "POST",
-          headers: { "Content-Type": "application/json" },
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
         body: JSON.stringify({
           tournamentId: selectedTournament.id,
           teamName: normalizedTeamName,
@@ -136,7 +140,11 @@ export default function RegisterPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Registration failed.");
 
-      setSuccess(`Registration complete for ${normalizedTeamName}. Keep this receipt for your records.`);
+      setSuccess(
+        result.emailStatus === "sent"
+          ? `Registration complete for ${normalizedTeamName}. A receipt was sent to ${result.captainEmail}.`
+          : `Registration complete for ${normalizedTeamName}. The receipt is shown below, but email delivery is ${result.emailStatus === "not_configured" ? "not configured" : "temporarily unavailable"}.`,
+      );
       setReceipt({ ...result, displayTournament: selectedTournament.title });
       setTeamName("");
       setPlayers([{ full_name: "", student_id: "", ign: "" }]);

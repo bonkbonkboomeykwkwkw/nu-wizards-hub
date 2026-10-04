@@ -4,6 +4,52 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 const isNonEmptyString = (value, maxLength) =>
   typeof value === "string" && value.trim().length > 0 && value.trim().length <= maxLength;
 
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}[character]));
+
+async function sendRegistrationReceipt({ captainEmail, team, tournament, players, registeredAt }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RECEIPT_FROM_EMAIL;
+  if (!apiKey || !from) return "not_configured";
+
+  const rosterHtml = players.map((player, index) =>
+    `<li><strong>${escapeHtml(player.full_name)}</strong> — ${escapeHtml(player.ign)}${index === 0 ? " (Captain)" : ""}</li>`,
+  ).join("");
+  const rosterText = players.map((player, index) =>
+    `${player.full_name} — ${player.ign}${index === 0 ? " (Captain)" : ""}`,
+  ).join("\n");
+  const date = new Date(registeredAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" });
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [captainEmail],
+      subject: `Registration receipt: ${team.team_name}`,
+      text: [
+        "Your NU Wizards tournament registration is confirmed.",
+        `Team: ${team.team_name}`,
+        `Tournament: ${tournament.title}`,
+        tournament.game_name ? `Game: ${tournament.game_name}` : null,
+        `Receipt ID: ${team.id}`,
+        `Submitted: ${date}`,
+        "Roster:",
+        rosterText,
+      ].filter(Boolean).join("\n"),
+      html: `<div style="font-family:Arial,sans-serif;color:#10244c;max-width:600px;margin:auto"><h1 style="color:#e6a800">NU Wizards registration confirmed</h1><p>Your team registration has been received.</p><dl><dt><strong>Team</strong></dt><dd>${escapeHtml(team.team_name)}</dd><dt><strong>Tournament</strong></dt><dd>${escapeHtml(tournament.title)}</dd>${tournament.game_name ? `<dt><strong>Game</strong></dt><dd>${escapeHtml(tournament.game_name)}</dd>` : ""}<dt><strong>Receipt ID</strong></dt><dd>${escapeHtml(team.id)}</dd><dt><strong>Submitted</strong></dt><dd>${escapeHtml(date)} (Philippine Time)</dd></dl><h2>Roster</h2><ol>${rosterHtml}</ol><p>Keep this email for your records.</p></div>`,
+    }),
+  });
+  return response.ok ? "sent" : "failed";
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -51,7 +97,7 @@ export async function POST(request) {
     if (existingTeam) return NextResponse.json({ error: "This captain email has already been used for a team registration." }, { status: 409 });
     const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
-      .select("id, max_team_size, registration_status")
+      .select("id, title, game_name, max_team_size, registration_status")
       .eq("id", tournamentId.trim())
       .single();
     if (tournamentError || !tournament) {
@@ -83,7 +129,23 @@ export async function POST(request) {
       if (error) throw error;
     }
 
-    return NextResponse.json({ success: true, teamId: team.id, teamName: team.team_name, captainEmail, tournament: tournament.id, registeredAt: new Date().toISOString() }, { status: 201 });
+    const registeredAt = new Date().toISOString();
+    let emailStatus = "failed";
+    try {
+      emailStatus = await sendRegistrationReceipt({ captainEmail, team, tournament, players: cleanPlayers, registeredAt });
+    } catch (emailError) {
+      console.error("Registration receipt email failed:", emailError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      teamId: team.id,
+      teamName: team.team_name,
+      captainEmail,
+      tournament: tournament.id,
+      registeredAt,
+      emailStatus,
+    }, { status: 201 });
   } catch (error) {
     const message =
       error && typeof error === "object" && typeof error.message === "string"

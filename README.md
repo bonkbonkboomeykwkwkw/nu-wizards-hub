@@ -16,6 +16,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Registration receipt emails
+
+Successful registrations send a receipt to the confirmed captain email through [Resend](https://resend.com/). Configure these server-side environment variables in `.env.local` and in your deployment environment:
+
+```env
+RESEND_API_KEY=re_...
+RECEIPT_FROM_EMAIL=NU Wizards <receipts@your-verified-domain.example>
+```
+
+The sender address must be allowed by your Resend account (verify your sending domain before using a custom domain). Without both variables, registration still completes and the receipt remains visible on the confirmation page, but no email is sent.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
