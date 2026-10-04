@@ -26,6 +26,7 @@ export default function LoginPage() {
     <p className="text-xs font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards · Team captain</p><h1 className="text-3xl font-black">Log in</h1><p className="text-sm text-slate-400">Use your verified email account to register a team.</p>
     <label className="block text-sm text-slate-300">Email<input className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} /></label>
     <label className="block text-sm text-slate-300">Password<input className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} /></label>
+    <p className="-mt-2 text-right text-sm"><Link className="text-yellow-400 hover:text-yellow-300" href="/forgot-password">Forgot password?</Link></p>
     {error && <p role="alert" className="text-sm text-red-300">{error}</p>}{message && <p role="status" className="text-sm text-emerald-300">{message}</p>}
     <button disabled={busy} className="w-full rounded-lg bg-yellow-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50">{busy ? "Signing in…" : "Log in with email"}</button><p className="text-sm text-slate-400">New captain? <Link className="text-yellow-400" href="/signup">Create an account</Link></p>
   </form></main></>;
