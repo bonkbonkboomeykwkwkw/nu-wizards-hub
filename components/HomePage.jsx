@@ -77,11 +77,11 @@ export default function HomePage() {
       {registrationNotice && <div role="status" className="border-b border-emerald-700 bg-emerald-950/70 px-4 py-4 text-center text-sm text-emerald-100">
         Registration complete for <strong>{registrationNotice}</strong>. Your confirmation has been sent to the captain email.
       </div>}
-      <div className="border-b border-slate-800 bg-slate-900 px-4 py-3 text-center text-sm">
+      <div className="border-b border-slate-800 bg-slate-900 px-3 py-2 text-center text-sm sm:px-4 sm:py-3">
         {checkingSession ? <span className="text-slate-400">Checking login…</span> : session?.user?.email ? (
           <p className="text-emerald-300">Welcome user ({session.user.email})</p>
         ) : (
-          <p className="text-slate-300">Not logged in. <Link href="/login" className="ml-1 font-semibold text-yellow-400 hover:text-yellow-300">Log in</Link> or <Link href="/signup" className="font-semibold text-yellow-400 hover:text-yellow-300">sign up</Link> to register a team.</p>
+          <p className="text-slate-300"><span className="hidden sm:inline">Not logged in. </span><Link href="/login" className="font-semibold text-yellow-400 hover:text-yellow-300">Log in</Link> or <Link href="/signup" className="font-semibold text-yellow-400 hover:text-yellow-300">sign up</Link> to register a team.</p>
         )}
       </div>
       <section className="border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/50">
