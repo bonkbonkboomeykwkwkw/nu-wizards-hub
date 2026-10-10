@@ -122,6 +122,7 @@ export async function POST(request) {
         tournamentTitle: tournament.title,
         gameName: tournament.game_name,
         registeredAt,
+        verificationUrl,
         players: cleanPlayers.map(({ full_name, ign }) => ({ full_name, ign })),
       });
       receiptEmailStatus = emailResult.sent ? "sent" : "not_configured";
