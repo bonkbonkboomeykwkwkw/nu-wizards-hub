@@ -16,16 +16,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Registration receipt emails
+## Registration receipts
 
-Successful registrations send a receipt to the confirmed captain email through [Resend](https://resend.com/). Configure these server-side environment variables in `.env.local` and in your deployment environment:
-
-```env
-RESEND_API_KEY=re_...
-RECEIPT_FROM_EMAIL=NU Wizards <receipts@your-verified-domain.example>
-```
-
-The sender address must be allowed by your Resend account (verify your sending domain before using a custom domain). Without both variables, registration still completes and the receipt remains visible on the confirmation page, but no email is sent.
+After registration, the captain sees an on-screen receipt with the registration ID and team details. No third-party receipt email service is configured. Supabase Auth separately sends signup confirmation and password reset emails based on its Authentication email settings.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
