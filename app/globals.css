@@ -40,6 +40,25 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background-image: url("/nu-wizards-watermark.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(52vw, 560px);
+  opacity: 0.075;
+}
+
+@media (max-width: 640px) {
+  body::before {
+    background-size: 82vw;
+  }
+}
+
 @keyframes page-fade-in {
   from {
     opacity: 0;

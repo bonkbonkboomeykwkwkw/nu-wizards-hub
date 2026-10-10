@@ -1,13 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SiteNav from "@/components/SiteNav";
+
+async function fetchRegistration(registrationId) {
+  const response = await fetch("/api/registrations/lookup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ registrationId }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Unable to check this registration.");
+  return data;
+}
 
 export default function CheckRegistrationPage() {
   const [registrationId, setRegistrationId] = useState("");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const idFromQrCode = new URLSearchParams(window.location.search).get("registrationId");
+    if (!idFromQrCode) return;
+
+    Promise.resolve()
+      .then(() => {
+        setRegistrationId(idFromQrCode);
+        setLoading(true);
+        return fetchRegistration(idFromQrCode);
+      })
+      .then((data) => setResult(data))
+      .catch((lookupError) => setError(lookupError.message || "Unable to check this registration."))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function checkRegistration(event) {
     event.preventDefault();
@@ -16,14 +42,7 @@ export default function CheckRegistrationPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/registrations/lookup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to check this registration.");
-      setResult(data);
+      setResult(await fetchRegistration(registrationId));
     } catch (lookupError) {
       setError(lookupError.message || "Unable to check this registration.");
     } finally {

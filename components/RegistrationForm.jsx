@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import QRCode from "qrcode";
 import SiteNav from "@/components/SiteNav";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -24,6 +26,7 @@ export default function RegisterPage() {
   const [session, setSession] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptQrCode, setReceiptQrCode] = useState("");
 
   const selectedTournament = useMemo(
     () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
@@ -37,6 +40,21 @@ export default function RegisterPage() {
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!receipt?.verificationUrl) return undefined;
+    let active = true;
+    QRCode.toDataURL(receipt.verificationUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 240,
+    }).then((dataUrl) => {
+      if (active) setReceiptQrCode(dataUrl);
+    }).catch(() => {
+      if (active) setReceiptQrCode("");
+    });
+    return () => { active = false; };
+  }, [receipt?.verificationUrl]);
 
   useEffect(() => {
     async function loadTournaments() {
@@ -181,6 +199,7 @@ export default function RegisterPage() {
         tournamentTitle: selectedTournament.title,
         gameName: selectedTournament.game_name,
         registeredAt: result.registeredAt,
+        verificationUrl: result.verificationUrl,
         players: normalizedPlayers,
         receiptEmailStatus: result.receiptEmailStatus,
       });
@@ -226,6 +245,11 @@ export default function RegisterPage() {
               <ol className="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-700 px-4">
                 {receipt.players.map((player, index) => <li key={`${player.student_id}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><span className="font-medium">{player.full_name}{index === 0 && <span className="ml-2 text-xs text-yellow-500">Captain</span>}</span><span className="text-slate-400">{player.ign}</span></li>)}
               </ol>
+            </div>
+            <div className="mt-6 rounded-xl border border-slate-700 bg-white p-4 text-center text-slate-900">
+              <h3 className="font-bold">Scan to verify registration</h3>
+              {receiptQrCode ? <Image src={receiptQrCode} alt="QR code linking to this registration check" width={192} height={192} unoptimized className="mx-auto mt-3 h-48 w-48" /> : <p className="mt-3 text-sm text-slate-600">Preparing your QR code…</p>}
+              <a href={receipt.verificationUrl} className="mt-2 inline-block text-sm font-semibold text-blue-800 underline">Or open the registration check</a>
             </div>
             <div className="mt-7 flex flex-wrap justify-end gap-3">
               <button type="button" onClick={() => setReceiptOpen(false)} className="rounded-lg bg-yellow-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400">Done</button>

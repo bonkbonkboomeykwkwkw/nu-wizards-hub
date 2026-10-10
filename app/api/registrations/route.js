@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/supabase/auth";
 import { sendRegistrationReceipt } from "@/lib/email/registration-receipt";
+import { getRegistrationVerificationUrl } from "@/lib/registration-url";
 
 export const runtime = "nodejs";
 
@@ -111,6 +112,7 @@ export async function POST(request) {
     }
 
     const registeredAt = new Date().toISOString();
+    const verificationUrl = getRegistrationVerificationUrl(team.id);
     let receiptEmailStatus = "not_configured";
     try {
       const emailResult = await sendRegistrationReceipt({
@@ -120,6 +122,7 @@ export async function POST(request) {
         tournamentTitle: tournament.title,
         gameName: tournament.game_name,
         registeredAt,
+        verificationUrl,
         players: cleanPlayers.map(({ full_name, ign }) => ({ full_name, ign })),
       });
       receiptEmailStatus = emailResult.sent ? "sent" : "not_configured";
@@ -136,6 +139,7 @@ export async function POST(request) {
       captainEmail,
       tournament: tournament.id,
       registeredAt,
+      verificationUrl,
       receiptEmailStatus,
     }, { status: 201 });
   } catch (error) {
