@@ -4,23 +4,37 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export async function GET() {
   try {
     const supabase = getSupabaseServerClient();
-    const [{ data: tournaments, error: tournamentError }, { data: teams, error: teamsError }, { data: savedMatches, error: matchesError }] = await Promise.all([
-      supabase.from("tournaments").select("id, title, game_name, registration_status").order("title"),
-      supabase.from("teams").select("id, tournament_id, team_name").order("team_name"),
-      supabase.from("tournament_matches").select("id, tournament_id, round_number, match_number, team_a_id, team_b_id, winner_id, team_a_score, team_b_score, status, scheduled_at").order("round_number").order("match_number"),
-    ]);
-    if (tournamentError) throw tournamentError;
-    if (teamsError) throw teamsError;
-    // The saved-match table is created by the admin migration. Until it is
-    // applied, retain the original generated first-round bracket.
-    if (matchesError && matchesError.code !== "PGRST205" && matchesError.code !== "42P01") throw matchesError;
-    const brackets = (tournaments ?? []).map((tournament) => {
-      const entrants = (teams ?? []).filter((team) => team.tournament_id === tournament.id);
-      const teamById = new Map(entrants.map((team) => [team.id, team]));
-      const configuredMatches = (matchesError ? [] : savedMatches ?? []).filter((match) => match.tournament_id === tournament.id);
+    let publicData;
+    const { data, error: publicError } = await supabase.rpc("public_bracket_data");
+    if (publicError?.code === "PGRST202" || publicError?.code === "42883") {
+      const [{ data: tournaments, error: tournamentError }, { data: teams, error: teamsError }, { data: savedMatches, error: matchesError }] = await Promise.all([
+        supabase.from("tournaments").select("id, title, game_name, registration_status").order("title"),
+        supabase.from("teams").select("id, tournament_id, team_name").order("team_name"),
+        supabase.from("tournament_matches").select("id, tournament_id, round_number, match_number, team_a_id, team_b_id, winner_id, team_a_score, team_b_score, status, scheduled_at").order("round_number").order("match_number"),
+      ]);
+      if (tournamentError) throw tournamentError;
+      if (teamsError) throw teamsError;
+      if (matchesError && matchesError.code !== "PGRST205" && matchesError.code !== "42P01") throw matchesError;
+      publicData = (tournaments ?? []).map((tournament) => ({
+        ...tournament,
+        entrants: (teams ?? []).filter((team) => team.tournament_id === tournament.id),
+        matches: matchesError ? [] : (savedMatches ?? []).filter((match) => match.tournament_id === tournament.id).map((match) => ({
+          ...match,
+          teamA: (teams ?? []).find((team) => team.id === match.team_a_id) ?? null,
+          teamB: (teams ?? []).find((team) => team.id === match.team_b_id) ?? null,
+          winner: (teams ?? []).find((team) => team.id === match.winner_id) ?? null,
+        })),
+      }));
+    } else if (publicError) {
+      throw publicError;
+    } else {
+      publicData = data;
+    }
+    const brackets = (publicData ?? []).map((tournament) => {
+      const entrants = tournament.entrants ?? [];
+      const configuredMatches = tournament.matches ?? [];
       const matches = configuredMatches.length ? configuredMatches.map((match) => ({
-        ...match, teamA: teamById.get(match.team_a_id) ?? null, teamB: teamById.get(match.team_b_id) ?? null,
-        winner: teamById.get(match.winner_id) ?? null, bye: !match.team_b_id,
+        ...match, bye: !match.teamB,
       })) : entrants.reduce((items, team, index) => {
         if (index % 2 === 0) items.push({ id: `1-${index / 2}`, teamA: team, teamB: entrants[index + 1] ?? null, bye: !entrants[index + 1], status: "scheduled", team_a_score: 0, team_b_score: 0 });
         return items;

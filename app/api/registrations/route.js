@@ -63,7 +63,7 @@ async function sendRegistrationReceipt({ captainEmail, team, tournament, players
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { tournamentId, teamName, players, facebookUrl, corPath } = body ?? {};
+    const { tournamentId, teamName, players, facebookUrl, corPath, privacyConsent } = body ?? {};
 
     if (!isNonEmptyString(tournamentId, 100) || !isNonEmptyString(teamName, 80)) {
       return NextResponse.json({ error: "A valid tournament and team name are required." }, { status: 400 });
@@ -73,6 +73,9 @@ export async function POST(request) {
     }
     if (!validFacebookUrl(facebookUrl)) {
       return NextResponse.json({ error: "Enter a valid HTTPS Facebook profile link." }, { status: 400 });
+    }
+    if (privacyConsent !== true) {
+      return NextResponse.json({ error: "You must accept the registration data notice." }, { status: 400 });
     }
     const cleanPlayers = players.map((player) => ({
       full_name: typeof player?.full_name === "string" ? player.full_name.trim() : "",
@@ -108,7 +111,7 @@ export async function POST(request) {
     if (existingTeam) return NextResponse.json({ error: "This captain email has already been used for a team registration." }, { status: 409 });
     const { data: tournament, error: tournamentError } = await getSupabaseServerClient()
       .from("tournaments")
-      .select("id, title, game_name, max_team_size, registration_status")
+      .select("id, title, game_name, max_team_size, registration_status, registration_closes_at")
       .eq("id", tournamentId.trim())
       .single();
     if (tournamentError || !tournament) {
@@ -119,6 +122,9 @@ export async function POST(request) {
     );
     if (!isOpen) {
       return NextResponse.json({ error: "Registration is closed for this tournament." }, { status: 400 });
+    }
+    if (tournament.registration_closes_at && new Date(tournament.registration_closes_at) <= new Date()) {
+      return NextResponse.json({ error: "Registration has closed for this tournament." }, { status: 400 });
     }
     if (cleanPlayers.length > Number(tournament.max_team_size)) {
       return NextResponse.json({ error: "The roster exceeds this tournament's team size limit." }, { status: 400 });
@@ -132,6 +138,7 @@ export async function POST(request) {
         captain_email: captainEmail,
         facebook_url: facebookUrl.trim(),
         cor_path: corPath,
+        privacy_consent_at: new Date().toISOString(),
       })
       .select("id, team_name")
       .single();

@@ -113,6 +113,14 @@ export async function POST(request) {
     } else if (body.action === "saveProfile") {
       const profile = body.profile ?? {};
       const payload = { role: profile.role === "admin" ? "admin" : "student", is_active: Boolean(profile.is_active), display_name: text(profile.display_name, 100) || null };
+      if (text(profile.id, 100) === result.context.user.id && (payload.role !== "admin" || !payload.is_active)) {
+        return NextResponse.json({ error: "You cannot remove your own administrator access." }, { status: 400 });
+      }
+      if (profile.role === "admin" && profile.is_active && (payload.role !== "admin" || !payload.is_active)) {
+        const { count, error: countError } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").eq("is_active", true);
+        if (countError) throw countError;
+        if ((count ?? 0) <= 1) return NextResponse.json({ error: "At least one active administrator must remain." }, { status: 400 });
+      }
       const { error } = await supabase.from("profiles").update(payload).eq("id", text(profile.id, 100));
       if (error) throw error;
     } else if (body.action === "deleteProfile") {

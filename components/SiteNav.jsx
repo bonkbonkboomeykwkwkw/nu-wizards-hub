@@ -17,19 +17,24 @@ export default function SiteNav() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setCheckingSession(false);
-    });
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    async function updateSession(nextSession) {
       setSession(nextSession);
+      if (nextSession?.user?.id) {
+        const { data } = await supabase.from("profiles").select("role, is_active").eq("id", nextSession.user.id).maybeSingle();
+        setIsAdmin(data?.role === "admin" && data?.is_active === true);
+      } else {
+        setIsAdmin(false);
+      }
       setCheckingSession(false);
-    });
+    }
+    supabase.auth.getSession().then(({ data }) => updateSession(data.session));
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => { updateSession(nextSession); });
     return () => authListener.subscription.unsubscribe();
   }, []);
 
@@ -70,7 +75,7 @@ export default function SiteNav() {
           ))}
           {!checkingSession && (session ? (
             <>
-              <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-yellow-400">Admin</Link>
+              {isAdmin && <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-yellow-400">Admin</Link>}
               <button type="button" onClick={logOut} disabled={signingOut} className="rounded-md px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-slate-900 hover:text-yellow-300 disabled:opacity-50">
                 {signingOut ? "Logging out…" : "Log out"}
               </button>
