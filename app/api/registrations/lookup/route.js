@@ -17,13 +17,14 @@ export async function POST(request) {
   }
 
   try {
-    const { data: team, error } = await getSupabaseServerClient()
-      .from("teams")
-      .select("id, team_name, created_at")
-      .eq("id", registrationId)
-      .maybeSingle();
-
+    const supabase = getSupabaseServerClient();
+    let { data, error } = await supabase.rpc("find_registration", { registration_id: registrationId });
+    if (error?.code === "PGRST202" || error?.code === "42883") {
+      ({ data, error } = await supabase.from("teams").select("team_name, created_at").eq("id", registrationId).maybeSingle());
+      data = data ? [data] : [];
+    }
     if (error) throw error;
+    const team = data?.[0];
     if (!team) return NextResponse.json({ registered: false });
 
     return NextResponse.json({

@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [teamName, setTeamName] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
   const [corFile, setCorFile] = useState(null);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const [selectedTournamentId, setSelectedTournamentId] = useState("");
   const [tournaments, setTournaments] = useState([]);
   const [players, setPlayers] = useState([
@@ -46,7 +47,7 @@ export default function RegisterPage() {
         const openTournaments = result.tournaments.filter((tournament) =>
           ["open", "active", "true"].includes(
             String(tournament.registration_status ?? "").toLowerCase(),
-          ),
+          ) && (!tournament.registration_closes_at || new Date(tournament.registration_closes_at) > new Date()),
         );
         setTournaments(openTournaments);
         if (openTournaments.length === 1) {
@@ -111,6 +112,10 @@ export default function RegisterPage() {
       setError("Attach your Certificate of Registration (COR).");
       return;
     }
+    if (!privacyConsent) {
+      setError("You must agree to the registration data notice before submitting.");
+      return;
+    }
     if (corFile.size > 10 * 1024 * 1024) {
       setError("Your COR file must be 10 MB or smaller.");
       return;
@@ -139,9 +144,11 @@ export default function RegisterPage() {
     }
 
     setSubmitting(true);
+    let uploadedCorPath = "";
     try {
       const fileExtension = corFile.name.split(".").pop()?.toLowerCase() || "file";
       const corPath = `${session.user.id}/${crypto.randomUUID()}.${fileExtension}`;
+      uploadedCorPath = corPath;
       const upload = await getSupabaseBrowserClient().storage.from("cor-documents").upload(corPath, corFile, {
         contentType: corFile.type,
         upsert: false,
@@ -160,6 +167,7 @@ export default function RegisterPage() {
           teamName: normalizedTeamName,
           facebookUrl: facebookUrl.trim(),
           corPath,
+          privacyConsent,
           players: normalizedPlayers,
         }),
       });
@@ -177,6 +185,9 @@ export default function RegisterPage() {
       });
       setReceiptOpen(true);
     } catch (submitError) {
+      if (uploadedCorPath) {
+        await getSupabaseBrowserClient().storage.from("cor-documents").remove([uploadedCorPath]);
+      }
       setError(
         submitError instanceof Error
           ? `Registration failed: ${submitError.message}`
@@ -419,6 +430,10 @@ export default function RegisterPage() {
               {error}
             </p>
           )}
+          <label className="flex gap-3 rounded-lg border border-slate-700 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300">
+            <input className="mt-1 h-4 w-4 accent-yellow-500" type="checkbox" checked={privacyConsent} onChange={(event) => setPrivacyConsent(event.target.checked)} required />
+            <span>I confirm that the information is accurate and that NU Wizards may use my contact details, student ID, roster, Facebook link, and COR only to verify and manage this tournament registration. COR documents are private and visible only to authorized organizers.</span>
+          </label>
           <button
             type="submit"
           disabled={submitting || loadingTournaments || !selectedTournament || !session}
