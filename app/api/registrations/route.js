@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/supabase/auth";
+import { sendRegistrationReceipt } from "@/lib/email/registration-receipt";
+
+export const runtime = "nodejs";
 
 const isNonEmptyString = (value, maxLength) =>
   typeof value === "string" && value.trim().length > 0 && value.trim().length <= maxLength;
@@ -108,6 +111,23 @@ export async function POST(request) {
     }
 
     const registeredAt = new Date().toISOString();
+    let receiptEmailStatus = "not_configured";
+    try {
+      const emailResult = await sendRegistrationReceipt({
+        to: captainEmail,
+        teamId: team.id,
+        teamName: team.team_name,
+        tournamentTitle: tournament.title,
+        gameName: tournament.game_name,
+        registeredAt,
+        players: cleanPlayers.map(({ full_name, ign }) => ({ full_name, ign })),
+      });
+      receiptEmailStatus = emailResult.sent ? "sent" : "not_configured";
+    } catch {
+      // Receipt delivery is best-effort; the registration is already saved.
+      console.error("Registration receipt email could not be sent.");
+      receiptEmailStatus = "failed";
+    }
 
     return NextResponse.json({
       success: true,
@@ -116,6 +136,7 @@ export async function POST(request) {
       captainEmail,
       tournament: tournament.id,
       registeredAt,
+      receiptEmailStatus,
     }, { status: 201 });
   } catch (error) {
     const message =

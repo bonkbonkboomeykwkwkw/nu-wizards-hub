@@ -18,7 +18,20 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Registration receipts
 
-After registration, the captain sees an on-screen receipt with the registration ID and team details. No third-party receipt email service is configured. Supabase Auth separately sends signup confirmation and password reset emails based on its Authentication email settings.
+After registration, the captain sees an on-screen receipt and receives a receipt copy by email when the server SMTP settings below are configured. Email delivery is best-effort, so a failed receipt email does not undo a saved registration. The email includes the registration ID and roster names/game names, and excludes student IDs and COR documents. Supabase Auth separately sends signup confirmation and password reset emails using its Authentication email settings.
+
+For Gmail SMTP, set these server-only environment variables in `.env.local` for local development and in Vercel for deployments. Never prefix these names with `NEXT_PUBLIC_`:
+
+```text
+RECEIPT_SMTP_USER=your-sender@gmail.com
+RECEIPT_SMTP_PASSWORD=your-google-app-password
+RECEIPT_SMTP_HOST=smtp.gmail.com
+RECEIPT_SMTP_PORT=587
+RECEIPT_SMTP_FROM_EMAIL=your-sender@gmail.com
+RECEIPT_SMTP_FROM_NAME=NU Wizards Tournament Hub
+```
+
+The sender address should match the Gmail account used for SMTP. These settings are separate from the SMTP settings configured in Supabase Auth.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

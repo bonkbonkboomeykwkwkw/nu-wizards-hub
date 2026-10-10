@@ -182,6 +182,7 @@ export default function RegisterPage() {
         gameName: selectedTournament.game_name,
         registeredAt: result.registeredAt,
         players: normalizedPlayers,
+        receiptEmailStatus: result.receiptEmailStatus,
       });
       setReceiptOpen(true);
     } catch (submitError) {
@@ -209,6 +210,7 @@ export default function RegisterPage() {
                 <p className="text-xs font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards · Registration</p>
                 <h2 id="receipt-title" className="mt-2 text-2xl font-black">Registration receipt</h2>
                 <p className="mt-2 text-sm text-emerald-300">Your team registration was submitted successfully.</p>
+                {receipt.receiptEmailStatus === "sent" ? <p className="mt-2 text-sm text-slate-300">A receipt copy was emailed to {receipt.captainEmail}.</p> : receipt.receiptEmailStatus === "failed" ? <p className="mt-2 text-sm text-amber-300">Your registration is saved, but we couldn’t email the receipt. Keep the receipt ID below.</p> : <p className="mt-2 text-sm text-slate-400">Email receipts aren’t configured on this deployment yet. Keep the receipt ID below.</p>}
               </div>
               <button type="button" aria-label="Close receipt" onClick={() => setReceiptOpen(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:border-yellow-500 hover:text-white">✕</button>
             </div>
@@ -253,6 +255,7 @@ export default function RegisterPage() {
           <section className="rounded-2xl border border-emerald-800 bg-emerald-950/30 p-6 text-center sm:p-8">
             <h2 className="text-2xl font-black text-emerald-300">Registration complete</h2>
             <p className="mt-3 text-slate-300">Receipt ID: <span className="font-mono text-sm">{receipt.id}</span></p>
+            {receipt.receiptEmailStatus === "sent" ? <p className="mt-2 text-sm text-slate-300">A receipt copy was emailed to {receipt.captainEmail}.</p> : receipt.receiptEmailStatus === "failed" ? <p className="mt-2 text-sm text-amber-300">The registration is saved, but its email receipt could not be sent.</p> : <p className="mt-2 text-sm text-slate-400">Email receipts aren’t configured on this deployment yet.</p>}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <button type="button" onClick={() => setReceiptOpen(true)} className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-slate-950 hover:bg-yellow-400">View receipt</button>
               <Link href="/" className="rounded-lg border border-slate-700 px-5 py-3 font-semibold text-slate-200 hover:border-yellow-500">Return home</Link>
