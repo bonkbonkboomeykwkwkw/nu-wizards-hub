@@ -287,8 +287,9 @@ export default function RegisterPage() {
           </section>
         ) : <form
           onSubmit={handleSubmit}
-          className="space-y-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20 sm:p-8"
+          className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20 sm:p-8"
         >
+          <fieldset disabled={!session || submitting} className="m-0 min-w-0 space-y-8 border-0 p-0 disabled:opacity-60">
           <section className="space-y-5">
             <h2 className="text-lg font-bold text-yellow-500">Team details</h2>
             <div>
@@ -471,6 +472,7 @@ export default function RegisterPage() {
           <p className="text-center text-xs text-slate-500">
             Your registration is saved to the tournament roster after submission.
           </p>
+          </fieldset>
         </form>}
       </div>
       </main>
