@@ -24,7 +24,16 @@ export async function GET(request) {
       supabase.from("tournament_matches").select("id, tournament_id, round_number, match_number, team_a_id, team_b_id, winner_id, team_a_score, team_b_score, status, scheduled_at").order("round_number").order("match_number"),
     ]);
     for (const query of [tournaments, announcements, teams, profiles, matches]) if (query.error) throw query.error;
-    return NextResponse.json({ admin: { id: user.id, email: user.email }, tournaments: tournaments.data, announcements: announcements.data, teams: teams.data, profiles: profiles.data, matches: matches.data });
+    const tournamentById = new Map((tournaments.data ?? []).map((item) => [item.id, item]));
+    const enrichedTeams = await Promise.all((teams.data ?? []).map(async (team) => {
+      let corUrl = null;
+      if (team.cor_path) {
+        const { data: signedFile } = await supabase.storage.from("cor-documents").createSignedUrl(team.cor_path, 300);
+        corUrl = signedFile?.signedUrl ?? null;
+      }
+      return { ...team, tournament_title: tournamentById.get(team.tournament_id)?.title ?? "Unknown event", cor_url: corUrl };
+    }));
+    return NextResponse.json({ admin: { id: user.id, email: user.email }, tournaments: tournaments.data, announcements: announcements.data, teams: enrichedTeams, profiles: profiles.data, matches: matches.data });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Could not load the admin workspace." }, { status: 500 });
   }
@@ -49,6 +58,31 @@ export async function POST(request) {
       const query = tournament.id ? supabase.from("tournaments").update(payload).eq("id", tournament.id) : supabase.from("tournaments").insert(payload);
       const { error } = await query;
       if (error) throw error;
+    } else if (body.action === "deleteTournament") {
+      const tournamentId = text(body.id, 100);
+      if (!tournamentId) return NextResponse.json({ error: "Choose a tournament to delete." }, { status: 400 });
+
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("tournament_id", tournamentId);
+      if (teamsError) throw teamsError;
+
+      const teamIds = (teams ?? []).map((team) => team.id);
+      if (teamIds.length) {
+        const { error: playersError } = await supabase.from("players").delete().in("team_id", teamIds);
+        if (playersError) throw playersError;
+      }
+
+      const { error: matchesError } = await supabase.from("tournament_matches").delete().eq("tournament_id", tournamentId);
+      if (matchesError) throw matchesError;
+      if (teamIds.length) {
+        const { error: deleteTeamsError } = await supabase.from("teams").delete().in("id", teamIds);
+        if (deleteTeamsError) throw deleteTeamsError;
+      }
+
+      const { error } = await supabase.from("tournaments").delete().eq("id", tournamentId);
+      if (error) throw error;
     } else if (body.action === "saveAnnouncement") {
       const announcement = body.announcement ?? {};
       const payload = { title: text(announcement.title, 160), content: text(announcement.content, 4000) };
@@ -72,6 +106,9 @@ export async function POST(request) {
       };
       const query = match.id ? supabase.from("tournament_matches").update(payload).eq("id", match.id) : supabase.from("tournament_matches").insert(payload);
       const { error } = await query;
+      if (error) throw error;
+    } else if (body.action === "deleteMatch") {
+      const { error } = await supabase.from("tournament_matches").delete().eq("id", text(body.id, 100));
       if (error) throw error;
     } else if (body.action === "saveProfile") {
       const profile = body.profile ?? {};
