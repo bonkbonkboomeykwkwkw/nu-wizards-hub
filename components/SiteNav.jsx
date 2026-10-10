@@ -69,9 +69,12 @@ export default function SiteNav() {
             </Link>
           ))}
           {!checkingSession && (session ? (
-            <button type="button" onClick={logOut} disabled={signingOut} className="rounded-md px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-slate-900 hover:text-yellow-300 disabled:opacity-50">
-              {signingOut ? "Logging out…" : "Log out"}
-            </button>
+            <>
+              <Link href="/admin" className="rounded-md px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-yellow-400">Admin</Link>
+              <button type="button" onClick={logOut} disabled={signingOut} className="rounded-md px-3 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-slate-900 hover:text-yellow-300 disabled:opacity-50">
+                {signingOut ? "Logging out…" : "Log out"}
+              </button>
+            </>
           ) : (
             <Link href="/login" className="rounded-md px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-yellow-400">Log in</Link>
           ))}
