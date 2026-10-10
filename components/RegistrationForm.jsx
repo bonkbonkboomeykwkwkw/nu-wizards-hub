@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -9,7 +9,6 @@ const inputClassName =
   "w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [teamName, setTeamName] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
   const [corFile, setCorFile] = useState(null);
@@ -22,6 +21,8 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const selectedTournament = useMemo(
     () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
@@ -165,7 +166,16 @@ export default function RegisterPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Registration failed.");
 
-      router.replace(`/?registration=success&team=${encodeURIComponent(result.teamName)}`);
+      setReceipt({
+        id: result.teamId,
+        teamName: result.teamName,
+        captainEmail: result.captainEmail,
+        tournamentTitle: selectedTournament.title,
+        gameName: selectedTournament.game_name,
+        registeredAt: result.registeredAt,
+        players: normalizedPlayers,
+      });
+      setReceiptOpen(true);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -180,6 +190,36 @@ export default function RegisterPage() {
   return (
     <>
       <SiteNav />
+      {receipt && receiptOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="my-auto w-full max-w-xl rounded-2xl border border-yellow-600/50 bg-slate-900 p-6 text-slate-100 shadow-2xl shadow-black/50 sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards · Registration</p>
+                <h2 id="receipt-title" className="mt-2 text-2xl font-black">Registration receipt</h2>
+                <p className="mt-2 text-sm text-emerald-300">Your team registration was submitted successfully.</p>
+              </div>
+              <button type="button" aria-label="Close receipt" onClick={() => setReceiptOpen(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:border-yellow-500 hover:text-white">✕</button>
+            </div>
+            <dl className="mt-6 grid gap-4 rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm sm:grid-cols-2">
+              <div><dt className="text-slate-500">Receipt ID</dt><dd className="mt-1 break-all font-mono text-xs text-slate-100">{receipt.id}</dd></div>
+              <div><dt className="text-slate-500">Submitted</dt><dd className="mt-1 text-slate-100">{new Date(receipt.registeredAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" })} PHT</dd></div>
+              <div><dt className="text-slate-500">Team</dt><dd className="mt-1 font-semibold text-slate-100">{receipt.teamName}</dd></div>
+              <div><dt className="text-slate-500">Tournament</dt><dd className="mt-1 text-slate-100">{receipt.tournamentTitle}{receipt.gameName ? ` · ${receipt.gameName}` : ""}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-slate-500">Captain email</dt><dd className="mt-1 text-slate-100">{receipt.captainEmail}</dd></div>
+            </dl>
+            <div className="mt-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-yellow-500">Registered roster</h3>
+              <ol className="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-700 px-4">
+                {receipt.players.map((player, index) => <li key={`${player.student_id}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><span className="font-medium">{player.full_name}{index === 0 && <span className="ml-2 text-xs text-yellow-500">Captain</span>}</span><span className="text-slate-400">{player.ign}</span></li>)}
+              </ol>
+            </div>
+            <div className="mt-7 flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setReceiptOpen(false)} className="rounded-lg bg-yellow-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400">Done</button>
+            </div>
+          </section>
+        </div>
+      )}
       <main className="page-fade-in min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <header className="mb-8 text-center">
@@ -198,7 +238,16 @@ export default function RegisterPage() {
           <strong>Email account required.</strong> <a className="ml-2 underline" href="/login">Log in</a> or <a className="underline" href="/signup">sign up and confirm your email</a> before registering.
         </div> : <p className="mb-6 text-center text-sm text-slate-400">Captain email: <span className="font-semibold text-slate-200">{session.user.email}</span> · One registration per email</p>}
 
-        <form
+        {receipt ? (
+          <section className="rounded-2xl border border-emerald-800 bg-emerald-950/30 p-6 text-center sm:p-8">
+            <h2 className="text-2xl font-black text-emerald-300">Registration complete</h2>
+            <p className="mt-3 text-slate-300">Receipt ID: <span className="font-mono text-sm">{receipt.id}</span></p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button type="button" onClick={() => setReceiptOpen(true)} className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-slate-950 hover:bg-yellow-400">View receipt</button>
+              <Link href="/" className="rounded-lg border border-slate-700 px-5 py-3 font-semibold text-slate-200 hover:border-yellow-500">Return home</Link>
+            </div>
+          </section>
+        ) : <form
           onSubmit={handleSubmit}
           className="space-y-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20 sm:p-8"
         >
@@ -380,7 +429,7 @@ export default function RegisterPage() {
           <p className="text-center text-xs text-slate-500">
             Your registration is saved to the tournament roster after submission.
           </p>
-        </form>
+        </form>}
       </div>
       </main>
     </>
