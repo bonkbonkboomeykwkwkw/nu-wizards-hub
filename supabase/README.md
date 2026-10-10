@@ -2,6 +2,8 @@
 
 Run `migrations/202610100001_admin_and_registration_features.sql` in the Supabase SQL Editor for the NU Wizards project.
 
+To allow admins to remove user accounts from the admin workspace, also run `migrations/202610100002_admin_delete_user.sql` in the SQL Editor. This deletes the selected Supabase login account and its profile. Existing tournament registrations are retained, and the final active admin account cannot be removed.
+
 Then make the first staff account an administrator. Replace the email below with the email used to sign in to the site:
 
 ```sql

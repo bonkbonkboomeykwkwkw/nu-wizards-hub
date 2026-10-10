@@ -115,11 +115,19 @@ export async function POST(request) {
       const payload = { role: profile.role === "admin" ? "admin" : "student", is_active: Boolean(profile.is_active), display_name: text(profile.display_name, 100) || null };
       const { error } = await supabase.from("profiles").update(payload).eq("id", text(profile.id, 100));
       if (error) throw error;
+    } else if (body.action === "deleteProfile") {
+      const targetUserId = text(body.id, 100);
+      if (!targetUserId) return NextResponse.json({ error: "Choose an account to remove." }, { status: 400 });
+      const { error } = await supabase.rpc("admin_delete_user", { target_user_id: targetUserId });
+      if (error) throw error;
     } else {
       return NextResponse.json({ error: "Unknown admin action." }, { status: 400 });
     }
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error.code === "PGRST202" || String(error.message).includes("admin_delete_user")) {
+      return NextResponse.json({ error: "Apply the latest Supabase migration to enable account removal." }, { status: 503 });
+    }
     return NextResponse.json({ error: error.message || "Could not save your changes." }, { status: 500 });
   }
 }
