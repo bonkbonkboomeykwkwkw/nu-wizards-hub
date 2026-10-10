@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Registration receipts
 
-After registration, the captain sees an on-screen receipt and receives a receipt copy by email when the server SMTP settings below are configured. Email delivery is best-effort, so a failed receipt email does not undo a saved registration. The email includes the registration ID and roster names/game names, and excludes student IDs and COR documents. Supabase Auth separately sends signup confirmation and password reset emails using its Authentication email settings.
+After registration, the captain sees an on-screen receipt with a QR code and receives a simple text receipt by email when the server SMTP settings below are configured. Email delivery is best-effort, so a failed receipt email does not undo a saved registration. The email includes the registration ID and roster names/game names, and excludes student IDs and COR documents. Use the receipt ID on the site's Check Registration page to verify the entry. Supabase Auth separately sends signup confirmation and password reset emails using its Authentication email settings.
 
 For Gmail SMTP, set these server-only environment variables in `.env.local` for local development and in Vercel for deployments. Never prefix these names with `NEXT_PUBLIC_`:
 
