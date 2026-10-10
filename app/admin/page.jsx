@@ -1,0 +1,68 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import SiteNav from "@/components/SiteNav";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+const fieldClass = "mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100";
+const emptyTournament = { title: "", game_name: "", team_format: "", max_team_size: 5, registration_status: "Open", location: "", starts_at: "", registration_closes_at: "", details: "" };
+const emptyMatch = { tournament_id: "", round_number: 1, match_number: 1, team_a_id: "", team_b_id: "", winner_id: "", team_a_score: 0, team_b_score: 0, status: "scheduled", scheduled_at: "" };
+
+function toLocalInput(value) {
+  return value ? new Date(value).toISOString().slice(0, 16) : "";
+}
+
+export default function AdminPage() {
+  const [data, setData] = useState(null); const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  const [tournament, setTournament] = useState(emptyTournament); const [announcement, setAnnouncement] = useState({ title: "", content: "" }); const [match, setMatch] = useState(emptyMatch);
+  const authHeaders = useCallback(async () => {
+    const { data: auth } = await getSupabaseBrowserClient().auth.getSession();
+    return auth.session?.access_token ? { "Content-Type": "application/json", Authorization: `Bearer ${auth.session.access_token}` } : null;
+  }, []);
+  const load = useCallback(async () => {
+    setError(""); const headers = await authHeaders(); if (!headers) { setError("Log in with an administrator account to use this page."); return; }
+    const response = await fetch("/api/admin", { headers }); const result = await response.json();
+    if (!response.ok) { setError(result.error || "Could not load the admin workspace."); return; }
+    setData(result);
+  }, [authHeaders]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+  async function save(action, payload) {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const headers = await authHeaders(); if (!headers) throw new Error("Log in again to continue.");
+      const response = await fetch("/api/admin", { method: "POST", headers, body: JSON.stringify({ action, ...payload }) }); const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not save changes.");
+      setMessage("Saved."); await load();
+    } catch (saveError) { setError(saveError.message); } finally { setBusy(false); }
+  }
+  const teamsForMatch = data?.teams?.filter((team) => team.tournament_id === match.tournament_id) ?? [];
+
+  return <main className="min-h-screen bg-slate-950 text-slate-100"><SiteNav /><section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <p className="text-sm font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards staff</p><h1 className="mt-2 text-3xl font-black sm:text-4xl">Admin workspace</h1><p className="mt-3 max-w-3xl text-slate-400">Manage tournament information, announcements, teams, live match results, and user access without editing the database manually.</p>
+    {error && <div role="alert" className="mt-6 rounded-xl border border-red-900 bg-red-950/50 p-4 text-red-200">{error}{error.includes("migration") && <p className="mt-2 text-sm">Run the new SQL migration in Supabase, then set the first staff profile to <code>admin</code>.</p>}</div>}
+    {message && <p role="status" className="mt-6 rounded-xl border border-emerald-800 bg-emerald-950/50 p-4 text-emerald-200">{message}</p>}
+    {!data ? <p className="mt-8 text-slate-400">Loading workspace…</p> : <div className="mt-8 grid gap-7">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7"><h2 className="text-xl font-bold text-yellow-400">Events and tournament details</h2><p className="mt-1 text-sm text-slate-400">Location, schedule, registration status, and team rules are visible to students.</p>
+        <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); save("saveTournament", { tournament: { ...tournament, starts_at: tournament.starts_at ? new Date(tournament.starts_at).toISOString() : null, registration_closes_at: tournament.registration_closes_at ? new Date(tournament.registration_closes_at).toISOString() : null } }); }}>
+          {[['title','Tournament title'],['game_name','Game'],['team_format','Format'],['location','Location']].map(([key,label]) => <label key={key} className="text-sm text-slate-300">{label}<input required={key === 'title'} className={fieldClass} value={tournament[key]} onChange={e=>setTournament({...tournament,[key]:e.target.value})}/></label>)}
+          <label className="text-sm text-slate-300">Maximum team size<input className={fieldClass} type="number" min="1" max="20" value={tournament.max_team_size} onChange={e=>setTournament({...tournament,max_team_size:e.target.value})}/></label>
+          <label className="text-sm text-slate-300">Registration<select className={fieldClass} value={tournament.registration_status} onChange={e=>setTournament({...tournament,registration_status:e.target.value})}><option>Open</option><option>Closed</option><option>Scheduled</option></select></label>
+          <label className="text-sm text-slate-300">Starts at<input className={fieldClass} type="datetime-local" value={tournament.starts_at} onChange={e=>setTournament({...tournament,starts_at:e.target.value})}/></label>
+          <label className="text-sm text-slate-300">Registration closes<input className={fieldClass} type="datetime-local" value={tournament.registration_closes_at} onChange={e=>setTournament({...tournament,registration_closes_at:e.target.value})}/></label>
+          <label className="text-sm text-slate-300 md:col-span-2">Event details<textarea className={fieldClass} rows="3" value={tournament.details} onChange={e=>setTournament({...tournament,details:e.target.value})}/></label>
+          <button disabled={busy} className="rounded-lg bg-yellow-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50">{tournament.id ? "Update tournament" : "Create tournament"}</button><button type="button" className="text-sm text-yellow-400" onClick={()=>setTournament(emptyTournament)}>New tournament</button>
+        </form>
+        <div className="mt-6 grid gap-3 md:grid-cols-2">{data.tournaments.map(item=><button key={item.id} type="button" onClick={()=>setTournament({...item,starts_at:toLocalInput(item.starts_at),registration_closes_at:toLocalInput(item.registration_closes_at)})} className="rounded-lg border border-slate-700 p-4 text-left hover:border-yellow-500"><strong>{item.title}</strong><span className="mt-1 block text-sm text-slate-400">{item.location || "No location"} · {item.registration_status}</span></button>)}</div>
+      </section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7"><h2 className="text-xl font-bold text-yellow-400">Announcements</h2><form className="mt-5 grid gap-4" onSubmit={(event)=>{event.preventDefault(); save("saveAnnouncement",{announcement});}}><input className={fieldClass} required placeholder="Announcement title" value={announcement.title} onChange={e=>setAnnouncement({...announcement,title:e.target.value})}/><textarea className={fieldClass} required rows="4" placeholder="Write an update for students" value={announcement.content} onChange={e=>setAnnouncement({...announcement,content:e.target.value})}/><div className="flex gap-4"><button disabled={busy} className="rounded-lg bg-yellow-500 px-4 py-3 font-bold text-slate-950">{announcement.id ? "Update announcement" : "Post announcement"}</button><button type="button" className="text-sm text-yellow-400" onClick={()=>setAnnouncement({title:"",content:""})}>New announcement</button></div></form><div className="mt-6 grid gap-3 md:grid-cols-2">{data.announcements.map(item=><div key={item.id} className="rounded-lg border border-slate-700 p-4"><strong>{item.title}</strong><p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{item.content}</p><div className="mt-3 flex gap-4 text-sm"><button className="text-yellow-400" onClick={()=>setAnnouncement(item)}>Edit</button><button className="text-red-300" onClick={()=>save("deleteAnnouncement",{id:item.id})}>Delete</button></div></div>)}</div></section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7"><h2 className="text-xl font-bold text-yellow-400">Teams and groups</h2><div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-slate-700 text-slate-400"><tr><th className="p-2">Team</th><th className="p-2">Captain</th><th className="p-2">Group</th><th className="p-2">COR</th></tr></thead><tbody>{data.teams.map(team=><tr key={team.id} className="border-b border-slate-800"><td className="p-2">{team.team_name}</td><td className="p-2">{team.captain_email}<a className="ml-2 text-yellow-400" href={team.facebook_url} target="_blank" rel="noreferrer">Facebook</a></td><td className="p-2"><input className="rounded border border-slate-700 bg-slate-950 px-2 py-1" defaultValue={team.group_name||""} onBlur={e=>{if(e.target.value !== (team.group_name||"")) save("setTeamGroup",{id:team.id,group_name:e.target.value});}} placeholder="e.g. Group A"/></td><td className="p-2 text-slate-400">{team.cor_path ? "Uploaded" : "Missing"}</td></tr>)}</tbody></table></div></section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7"><h2 className="text-xl font-bold text-yellow-400">Bracket editor</h2><form className="mt-5 grid gap-4 md:grid-cols-3" onSubmit={event=>{event.preventDefault();save("saveMatch",{match:{...match,scheduled_at:match.scheduled_at?new Date(match.scheduled_at).toISOString():null}});}}><select required className={fieldClass} value={match.tournament_id} onChange={e=>setMatch({...match,tournament_id:e.target.value,team_a_id:"",team_b_id:"",winner_id:""})}><option value="">Tournament</option>{data.tournaments.map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select><label className="text-sm">Round<input className={fieldClass} type="number" min="1" value={match.round_number} onChange={e=>setMatch({...match,round_number:e.target.value})}/></label><label className="text-sm">Match<input className={fieldClass} type="number" min="1" value={match.match_number} onChange={e=>setMatch({...match,match_number:e.target.value})}/></label>{[['team_a_id','Team A'],['team_b_id','Team B'],['winner_id','Winner']].map(([key,label])=><select key={key} className={fieldClass} value={match[key]} onChange={e=>setMatch({...match,[key]:e.target.value})}><option value="">{label}</option>{teamsForMatch.map(t=><option key={t.id} value={t.id}>{t.team_name}</option>)}</select>)}<label className="text-sm">Team A score<input className={fieldClass} type="number" min="0" value={match.team_a_score} onChange={e=>setMatch({...match,team_a_score:e.target.value})}/></label><label className="text-sm">Team B score<input className={fieldClass} type="number" min="0" value={match.team_b_score} onChange={e=>setMatch({...match,team_b_score:e.target.value})}/></label><select className={fieldClass} value={match.status} onChange={e=>setMatch({...match,status:e.target.value})}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="complete">Complete</option></select><label className="text-sm">Scheduled at<input className={fieldClass} type="datetime-local" value={match.scheduled_at} onChange={e=>setMatch({...match,scheduled_at:e.target.value})}/></label><button disabled={busy} className="rounded-lg bg-yellow-500 px-4 py-3 font-bold text-slate-950">{match.id ? "Update match" : "Add match"}</button></form><div className="mt-6 grid gap-3 md:grid-cols-2">{data.matches.map(item=><button type="button" key={item.id} onClick={()=>setMatch({...item,scheduled_at:toLocalInput(item.scheduled_at)})} className="rounded-lg border border-slate-700 p-3 text-left text-sm hover:border-yellow-500">Round {item.round_number}, match {item.match_number} · {item.status}</button>)}</div></section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:p-7"><h2 className="text-xl font-bold text-yellow-400">User access</h2><p className="mt-1 text-sm text-slate-400">Admins can grant staff access or deactivate an account. At least one active admin should always remain.</p><div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-slate-700 text-slate-400"><tr><th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Access</th></tr></thead><tbody>{data.profiles.map(profile=><tr key={profile.id} className="border-b border-slate-800"><td className="p-2">{profile.email}</td><td className="p-2"><select className="rounded border border-slate-700 bg-slate-950 px-2 py-1" value={profile.role} onChange={e=>save("saveProfile",{profile:{...profile,role:e.target.value}})}><option value="student">Student</option><option value="admin">Admin</option></select></td><td className="p-2"><label className="flex gap-2"><input type="checkbox" checked={profile.is_active} onChange={e=>save("saveProfile",{profile:{...profile,is_active:e.target.checked}})}/> Active</label></td></tr>)}</tbody></table></div></section>
+    </div>}
+    <p className="mt-8 text-sm text-slate-500"><Link href="/" className="text-yellow-400">Return to public site</Link></p>
+  </section></main>;
+}

@@ -13,12 +13,17 @@ export default function HomePage() {
   const [announcementError, setAnnouncementError] = useState("");
   const [tournamentError, setTournamentError] = useState("");
   const [signupNotice, setSignupNotice] = useState(false);
+  const [registrationNotice, setRegistrationNotice] = useState("");
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     const signupNoticeTimer = window.setTimeout(() => {
       setSignupNotice(new URLSearchParams(window.location.search).get("signup") === "check-email");
+      const parameters = new URLSearchParams(window.location.search);
+      if (parameters.get("registration") === "success") {
+        setRegistrationNotice(parameters.get("team") || "Your team");
+      }
     }, 0);
     const supabase = getSupabaseBrowserClient();
     supabase.auth.getSession().then(({ data }) => {
@@ -68,6 +73,9 @@ export default function HomePage() {
       <SiteNav />
       {signupNotice && <div role="status" className="border-b border-yellow-700 bg-yellow-950/70 px-4 py-4 text-center text-sm text-yellow-100">
         Account created. Check your inbox and confirm your email before logging in to register your team.
+      </div>}
+      {registrationNotice && <div role="status" className="border-b border-emerald-700 bg-emerald-950/70 px-4 py-4 text-center text-sm text-emerald-100">
+        Registration complete for <strong>{registrationNotice}</strong>. Your confirmation has been sent to the captain email.
       </div>}
       <div className="border-b border-slate-800 bg-slate-900 px-4 py-3 text-center text-sm">
         {checkingSession ? <span className="text-slate-400">Checking login…</span> : session?.user?.email ? (
@@ -166,6 +174,10 @@ export default function HomePage() {
                     {tournament.team_format || "Team event"}
                     {tournament.max_team_size ? ` · Up to ${tournament.max_team_size} players` : ""}
                   </p>
+                  {(tournament.location || tournament.starts_at) && <p className="mt-2 text-sm text-slate-300">
+                    {tournament.location || "Venue TBA"}{tournament.starts_at ? ` · ${new Date(tournament.starts_at).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" })}` : ""}
+                  </p>}
+                  {tournament.details && <p className="mt-3 text-sm leading-6 text-slate-300">{tournament.details}</p>}
                   <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-300">
                     {isOpen ? "Registration open" : status}
                   </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import SiteNav from "@/components/SiteNav";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -8,7 +9,10 @@ const inputClassName =
   "w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [teamName, setTeamName] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [corFile, setCorFile] = useState(null);
   const [selectedTournamentId, setSelectedTournamentId] = useState("");
   const [tournaments, setTournaments] = useState([]);
   const [players, setPlayers] = useState([
@@ -17,8 +21,6 @@ export default function RegisterPage() {
   const [loadingTournaments, setLoadingTournaments] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [receipt, setReceipt] = useState(null);
   const [session, setSession] = useState(null);
 
   const selectedTournament = useMemo(
@@ -84,8 +86,6 @@ export default function RegisterPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
-    setSuccess("");
-    setReceipt(null);
 
     const normalizedTeamName = teamName.trim();
     const normalizedPlayers = players.map((player) => ({
@@ -100,6 +100,22 @@ export default function RegisterPage() {
     }
     if (!normalizedTeamName) {
       setError("Enter a team name.");
+      return;
+    }
+    if (!/^https:\/\/(?:[a-z0-9-]+\.)?facebook\.com\//i.test(facebookUrl.trim())) {
+      setError("Enter your Facebook profile link, beginning with https://facebook.com/.");
+      return;
+    }
+    if (!corFile) {
+      setError("Attach your Certificate of Registration (COR).");
+      return;
+    }
+    if (corFile.size > 10 * 1024 * 1024) {
+      setError("Your COR file must be 10 MB or smaller.");
+      return;
+    }
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(corFile.type)) {
+      setError("Upload your COR as a PDF, JPG, or PNG file.");
       return;
     }
     if (normalizedPlayers.length < 1 || normalizedPlayers.length > maxTeamSize) {
@@ -123,6 +139,13 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
+      const fileExtension = corFile.name.split(".").pop()?.toLowerCase() || "file";
+      const corPath = `${session.user.id}/${crypto.randomUUID()}.${fileExtension}`;
+      const upload = await getSupabaseBrowserClient().storage.from("cor-documents").upload(corPath, corFile, {
+        contentType: corFile.type,
+        upsert: false,
+      });
+      if (upload.error) throw new Error(`Could not upload your COR: ${upload.error.message}`);
       const response = await fetch("/api/registrations", {
         method: "POST",
         headers: {
@@ -134,20 +157,15 @@ export default function RegisterPage() {
         body: JSON.stringify({
           tournamentId: selectedTournament.id,
           teamName: normalizedTeamName,
+          facebookUrl: facebookUrl.trim(),
+          corPath,
           players: normalizedPlayers,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Registration failed.");
 
-      setSuccess(
-        result.emailStatus === "sent"
-          ? `Registration complete for ${normalizedTeamName}. A receipt was sent to ${result.captainEmail}.`
-          : `Registration complete for ${normalizedTeamName}. The receipt is shown below, but email delivery is ${result.emailStatus === "not_configured" ? "not configured" : "temporarily unavailable"}.`,
-      );
-      setReceipt({ ...result, displayTournament: selectedTournament.title });
-      setTeamName("");
-      setPlayers([{ full_name: "", student_id: "", ign: "" }]);
+      router.replace(`/?registration=success&team=${encodeURIComponent(result.teamName)}`);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -199,6 +217,35 @@ export default function RegisterPage() {
                 required
                 placeholder="Enter your team name"
               />
+            </div>
+            <div>
+              <label htmlFor="facebook-url" className="mb-2 block text-sm font-medium text-slate-300">
+                Facebook profile link
+              </label>
+              <input
+                id="facebook-url"
+                className={inputClassName}
+                value={facebookUrl}
+                onChange={(event) => setFacebookUrl(event.target.value)}
+                type="url"
+                required
+                placeholder="https://www.facebook.com/your.profile"
+              />
+              <p className="mt-2 text-xs text-slate-400">Used only by organizers to contact the team captain.</p>
+            </div>
+            <div>
+              <label htmlFor="cor-file" className="mb-2 block text-sm font-medium text-slate-300">
+                Certificate of Registration (COR)
+              </label>
+              <input
+                id="cor-file"
+                className="block w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-yellow-500 file:px-3 file:py-2 file:font-semibold file:text-slate-950 hover:file:bg-yellow-400"
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                onChange={(event) => setCorFile(event.target.files?.[0] ?? null)}
+                required
+              />
+              <p className="mt-2 text-xs text-slate-400">PDF, JPG, or PNG · maximum 10 MB.</p>
             </div>
             <div>
               <label htmlFor="tournament" className="mb-2 block text-sm font-medium text-slate-300">
@@ -323,12 +370,6 @@ export default function RegisterPage() {
               {error}
             </p>
           )}
-          {success && (
-            <p role="status" className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-300">
-              {success}
-            </p>
-          )}
-
           <button
             type="submit"
           disabled={submitting || loadingTournaments || !selectedTournament || !session}
@@ -340,11 +381,6 @@ export default function RegisterPage() {
             Your registration is saved to the tournament roster after submission.
           </p>
         </form>
-        {receipt && <section aria-label="Registration receipt" className="mt-6 rounded-2xl border border-emerald-700 bg-emerald-950/40 p-6">
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-300">Registration receipt</p>
-          <h2 className="mt-2 text-xl font-bold">{receipt.teamName}</h2>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-slate-400">Tournament</dt><dd>{receipt.displayTournament}</dd></div><div><dt className="text-slate-400">Captain email</dt><dd>{receipt.captainEmail}</dd></div><div><dt className="text-slate-400">Receipt ID</dt><dd className="break-all font-mono">{receipt.teamId}</dd></div><div><dt className="text-slate-400">Submitted</dt><dd>{new Date(receipt.registeredAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}</dd></div></dl>
-        </section>}
       </div>
       </main>
     </>

@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/auth";
 
 const isNonEmptyString = (value, maxLength) =>
   typeof value === "string" && value.trim().length > 0 && value.trim().length <= maxLength;
+
+function validFacebookUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (url.hostname === "facebook.com" || url.hostname.endsWith(".facebook.com"));
+  } catch {
+    return false;
+  }
+}
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   "&": "&amp;",
@@ -53,13 +63,16 @@ async function sendRegistrationReceipt({ captainEmail, team, tournament, players
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { tournamentId, teamName, players } = body ?? {};
+    const { tournamentId, teamName, players, facebookUrl, corPath } = body ?? {};
 
     if (!isNonEmptyString(tournamentId, 100) || !isNonEmptyString(teamName, 80)) {
       return NextResponse.json({ error: "A valid tournament and team name are required." }, { status: 400 });
     }
     if (!Array.isArray(players) || players.length < 1 || players.length > 5) {
       return NextResponse.json({ error: "Provide a valid roster of 1 to 5 players." }, { status: 400 });
+    }
+    if (!validFacebookUrl(facebookUrl)) {
+      return NextResponse.json({ error: "Enter a valid HTTPS Facebook profile link." }, { status: 400 });
     }
     const cleanPlayers = players.map((player) => ({
       full_name: typeof player?.full_name === "string" ? player.full_name.trim() : "",
@@ -77,15 +90,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "Each player must have a different Student ID." }, { status: 400 });
     }
 
-    const authorization = request.headers.get("authorization") ?? "";
-    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-    if (!token) return NextResponse.json({ error: "Log in with a confirmed captain email to register." }, { status: 401 });
-
-    const supabase = getSupabaseServerClient();
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
-    const captainEmail = authData?.user?.email?.trim().toLowerCase();
-    if (authError || !captainEmail || !authData.user.email_confirmed_at) {
-      return NextResponse.json({ error: "Confirm your email and log in before registering." }, { status: 401 });
+    const identity = await requireUser(request);
+    if (identity.error) return NextResponse.json({ error: identity.error }, { status: identity.status });
+    const { supabase, user } = identity;
+    const captainEmail = user.email?.trim().toLowerCase();
+    if (!captainEmail) return NextResponse.json({ error: "A confirmed email address is required." }, { status: 401 });
+    if (!isNonEmptyString(corPath, 500) || !corPath.startsWith(`${user.id}/`)) {
+      return NextResponse.json({ error: "Upload your Certificate of Registration before submitting." }, { status: 400 });
     }
 
     const { data: existingTeam, error: duplicateError } = await supabase
@@ -95,7 +106,7 @@ export async function POST(request) {
       .maybeSingle();
     if (duplicateError) throw duplicateError;
     if (existingTeam) return NextResponse.json({ error: "This captain email has already been used for a team registration." }, { status: 409 });
-    const { data: tournament, error: tournamentError } = await supabase
+    const { data: tournament, error: tournamentError } = await getSupabaseServerClient()
       .from("tournaments")
       .select("id, title, game_name, max_team_size, registration_status")
       .eq("id", tournamentId.trim())
@@ -115,7 +126,13 @@ export async function POST(request) {
 
     const { data: team, error: teamError } = await supabase
       .from("teams")
-      .insert({ tournament_id: tournament.id, team_name: teamName.trim(), captain_email: captainEmail })
+      .insert({
+        tournament_id: tournament.id,
+        team_name: teamName.trim(),
+        captain_email: captainEmail,
+        facebook_url: facebookUrl.trim(),
+        cor_path: corPath,
+      })
       .select("id, team_name")
       .single();
     if (teamError) throw teamError;
