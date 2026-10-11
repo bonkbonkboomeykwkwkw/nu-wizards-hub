@@ -20,7 +20,7 @@ export default function SignupPage() {
     else router.replace("/?signup=check-email");
     setBusy(false);
   }
-  return <><SiteNav /><main className="page-fade-in min-h-screen px-4 py-16 text-slate-100"><form onSubmit={submit} className="mx-auto max-w-md space-y-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-7">
+  return <><SiteNav /><main className="page-fade-in min-h-screen px-3 py-8 text-slate-100 sm:px-4 sm:py-16"><form onSubmit={submit} className="mx-auto max-w-md space-y-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-5 sm:p-7">
     <p className="text-xs font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards · Team captain</p><h1 className="text-3xl font-black">Create account</h1><p className="text-sm text-slate-400">One captain email is used for the whole team. It can register once.</p>
     <label className="block text-sm text-slate-300">Captain email<input className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} /></label>
     <label className="block text-sm text-slate-300">Password<PasswordInput className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3" autoComplete="new-password" minLength={8} required value={password} onChange={e=>setPassword(e.target.value)} /></label>

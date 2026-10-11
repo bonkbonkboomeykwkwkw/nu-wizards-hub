@@ -85,28 +85,28 @@ export default function HomePage() {
         )}
       </div>
       <section className="border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/50">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <p className="text-sm font-bold uppercase tracking-[0.25em] text-yellow-500">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-28">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-500 sm:text-sm sm:tracking-[0.25em]">
             National University · School Esports
           </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">
+          <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight sm:mt-5 sm:text-6xl">
             The Wizards Tournament Hub
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:mt-5 sm:text-lg sm:leading-8">
             Tournament announcements, team registration, and live brackets for NU Wizards.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/register" className="rounded-lg bg-yellow-500 px-5 py-3 font-bold text-slate-950 hover:bg-yellow-400">
+          <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row">
+            <Link href="/register" className="rounded-lg bg-yellow-500 px-5 py-3 text-center font-bold text-slate-950 hover:bg-yellow-400">
               Register your team
             </Link>
-            <Link href="/bracketing" className="rounded-lg border border-slate-700 px-5 py-3 font-bold text-slate-100 hover:border-yellow-500">
+            <Link href="/bracketing" className="rounded-lg border border-slate-700 px-5 py-3 text-center font-bold text-slate-100 hover:border-yellow-500">
               View brackets
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-yellow-500">Stay in the game</p>

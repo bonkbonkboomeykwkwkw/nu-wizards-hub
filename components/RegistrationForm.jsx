@@ -222,48 +222,48 @@ export default function RegisterPage() {
     <>
       <SiteNav />
       {receipt && receiptOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="my-auto w-full max-w-xl rounded-2xl border border-yellow-600/50 bg-slate-900 p-6 text-slate-100 shadow-2xl shadow-black/50 sm:p-8">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/80 p-2 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceiptOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="my-2 w-full max-w-xl rounded-2xl border border-yellow-600/50 bg-slate-900 p-4 text-slate-100 shadow-2xl shadow-black/50 sm:my-auto sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.25em] text-yellow-500">NU Wizards · Registration</p>
-                <h2 id="receipt-title" className="mt-2 text-2xl font-black">Registration receipt</h2>
+                <h2 id="receipt-title" className="mt-2 text-xl font-black sm:text-2xl">Registration receipt</h2>
                 <p className="mt-2 text-sm text-emerald-300">Your team registration was submitted successfully.</p>
                 {receipt.receiptEmailStatus === "sent" ? <p className="mt-2 text-sm text-slate-300">A receipt copy was emailed to {receipt.captainEmail}.</p> : receipt.receiptEmailStatus === "failed" ? <p className="mt-2 text-sm text-amber-300">Your registration is saved, but we couldn’t email the receipt. Keep the receipt ID below.</p> : <p className="mt-2 text-sm text-slate-400">Email receipts aren’t configured on this deployment yet. Keep the receipt ID below.</p>}
               </div>
               <button type="button" aria-label="Close receipt" onClick={() => setReceiptOpen(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-slate-300 hover:border-yellow-500 hover:text-white">✕</button>
             </div>
-            <dl className="mt-6 grid gap-4 rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm sm:grid-cols-2">
+            <dl className="mt-5 grid gap-3 rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-sm sm:mt-6 sm:grid-cols-2 sm:gap-4 sm:p-4">
               <div><dt className="text-slate-500">Receipt ID</dt><dd className="mt-1 break-all font-mono text-xs text-slate-100">{receipt.id}</dd></div>
               <div><dt className="text-slate-500">Submitted</dt><dd className="mt-1 text-slate-100">{new Date(receipt.registeredAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" })} PHT</dd></div>
               <div><dt className="text-slate-500">Team</dt><dd className="mt-1 font-semibold text-slate-100">{receipt.teamName}</dd></div>
               <div><dt className="text-slate-500">Tournament</dt><dd className="mt-1 text-slate-100">{receipt.tournamentTitle}{receipt.gameName ? ` · ${receipt.gameName}` : ""}</dd></div>
               <div className="sm:col-span-2"><dt className="text-slate-500">Captain email</dt><dd className="mt-1 text-slate-100">{receipt.captainEmail}</dd></div>
             </dl>
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               <h3 className="text-sm font-bold uppercase tracking-wider text-yellow-500">Registered roster</h3>
-              <ol className="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-700 px-4">
+              <ol className="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-700 px-3 sm:px-4">
                 {receipt.players.map((player, index) => <li key={`${player.student_id}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><span className="font-medium">{player.full_name}{index === 0 && <span className="ml-2 text-xs text-yellow-500">Captain</span>}</span><span className="text-slate-400">{player.ign}</span></li>)}
               </ol>
             </div>
-            <div className="mt-6 rounded-xl border border-slate-700 bg-white p-4 text-center text-slate-900">
+            <div className="mt-5 rounded-xl border border-slate-700 bg-white p-3 text-center text-slate-900 sm:mt-6 sm:p-4">
               <h3 className="font-bold">Scan to verify registration</h3>
-              {receiptQrCode ? <Image src={receiptQrCode} alt="QR code linking to this registration check" width={192} height={192} unoptimized className="mx-auto mt-3 h-48 w-48" /> : <p className="mt-3 text-sm text-slate-600">Preparing your QR code…</p>}
+              {receiptQrCode ? <Image src={receiptQrCode} alt="QR code linking to this registration check" width={192} height={192} unoptimized className="mx-auto mt-3 h-40 w-40 sm:h-48 sm:w-48" /> : <p className="mt-3 text-sm text-slate-600">Preparing your QR code…</p>}
               <a href={receipt.verificationUrl} className="mt-2 inline-block text-sm font-semibold text-blue-800 underline">Or open the registration check</a>
             </div>
-            <div className="mt-7 flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={() => setReceiptOpen(false)} className="rounded-lg bg-yellow-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400">Done</button>
+            <div className="mt-5 flex flex-wrap justify-end gap-3 sm:mt-7">
+              <button type="button" onClick={() => setReceiptOpen(false)} className="w-full rounded-lg bg-yellow-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-yellow-400 sm:w-auto">Done</button>
             </div>
           </section>
         </div>
       )}
-      <main className="page-fade-in min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-6">
+      <main className="page-fade-in min-h-screen bg-slate-950 px-3 py-7 text-slate-100 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-3xl">
-        <header className="mb-8 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.25em] text-yellow-500">
+        <header className="mb-6 text-center sm:mb-8">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-500 sm:text-sm sm:tracking-[0.25em]">
             National University · Wizards
           </p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+          <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-4xl">
             Tournament Registration
           </h1>
           <p className="mt-3 text-slate-400">
@@ -287,9 +287,9 @@ export default function RegisterPage() {
           </section>
         ) : <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20 sm:p-8"
+          className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl shadow-black/20 sm:p-8"
         >
-          <fieldset disabled={!session || submitting} className="m-0 min-w-0 space-y-8 border-0 p-0 disabled:opacity-60">
+          <fieldset disabled={!session || submitting} className="m-0 min-w-0 space-y-6 border-0 p-0 disabled:opacity-60 sm:space-y-8">
           <section className="space-y-5">
             <h2 className="text-lg font-bold text-yellow-500">Team details</h2>
             <div>
