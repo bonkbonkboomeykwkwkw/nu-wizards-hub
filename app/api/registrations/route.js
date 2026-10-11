@@ -125,10 +125,29 @@ export async function POST(request) {
         verificationUrl,
         players: cleanPlayers.map(({ full_name, ign }) => ({ full_name, ign })),
       });
-      receiptEmailStatus = emailResult.sent ? "sent" : "not_configured";
-    } catch {
+      receiptEmailStatus = emailResult.sent
+        ? "sent"
+        : emailResult.configured
+          ? "rejected"
+          : "not_configured";
+
+      if (emailResult.configured) {
+        console.info("Registration receipt SMTP result", {
+          teamId: team.id,
+          acceptedCount: emailResult.acceptedCount,
+          rejectedCount: emailResult.rejectedCount,
+          responseCode: emailResult.responseCode,
+          messageId: emailResult.messageId,
+        });
+      }
+    } catch (emailError) {
       // Receipt delivery is best-effort; the registration is already saved.
-      console.error("Registration receipt email could not be sent.");
+      console.error("Registration receipt SMTP failure", {
+        teamId: team.id,
+        code: emailError?.code ?? null,
+        responseCode: emailError?.responseCode ?? null,
+        command: emailError?.command ?? null,
+      });
       receiptEmailStatus = "failed";
     }
 
