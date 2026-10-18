@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import SiteNav from "@/components/SiteNav";
 import HomeInformation, { CommunitySpotlight, WIZARDS_FACEBOOK_URL } from "@/components/HomeInformation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { getGameBackgroundStyle } from "@/lib/game-art";
+import GameArt from "@/components/GameArt";
 
 export default function HomePage() {
   const [tournaments, setTournaments] = useState([]);
@@ -140,7 +140,9 @@ export default function HomePage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {announcements.map((announcement) => (
-              <article key={announcement.id} style={{ ...getGameBackgroundStyle(`${announcement.title} ${announcement.content}`), backgroundSize: "cover", backgroundPosition: "center" }} className="card-fade-in rounded-2xl border border-slate-700 p-6 shadow-lg">
+              <article key={announcement.id} className="card-fade-in overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                <GameArt name={`${announcement.title} ${announcement.content}`} />
+                <div className="p-6">
                 <p className="text-sm font-semibold text-yellow-500">
                   {announcement.created_at
                     ? new Date(announcement.created_at).toLocaleDateString("en-PH", {
@@ -156,6 +158,7 @@ export default function HomePage() {
                 <Link href="/register" className="mt-5 inline-block text-sm font-semibold text-yellow-400 hover:text-yellow-300">
                   Register for a tournament →
                 </Link>
+                </div>
               </article>
             ))}
           </div>
@@ -177,7 +180,9 @@ export default function HomePage() {
               const status = String(tournament.registration_status ?? "Scheduled");
               const isOpen = ["open", "active", "true"].includes(status.toLowerCase());
               return (
-                <article key={tournament.id} style={{ ...getGameBackgroundStyle(tournament.game_name), backgroundSize: "cover", backgroundPosition: "center" }} className="card-fade-in rounded-2xl border border-slate-700 p-6 shadow-lg">
+                <article key={tournament.id} className="card-fade-in overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
+                  <GameArt name={tournament.game_name} />
+                  <div className="p-6">
                   <p className="text-sm font-semibold text-yellow-500">{tournament.game_name || "NU Wizards Tournament"}</p>
                   <h3 className="mt-2 text-xl font-bold">{tournament.title}</h3>
                   <p className="mt-2 text-sm text-slate-200">
@@ -194,6 +199,7 @@ export default function HomePage() {
                   <div className="mt-5 flex gap-4 text-sm font-semibold">
                     {isOpen && <Link href="/register" className="text-yellow-400 hover:text-yellow-300">Register →</Link>}
                     <Link href="/bracketing" className="text-slate-300 hover:text-white">Bracketing →</Link>
+                  </div>
                   </div>
                 </article>
               );

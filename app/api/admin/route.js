@@ -99,10 +99,20 @@ export async function POST(request) {
     } else if (body.action === "saveMatch") {
       const match = body.match ?? {};
       if (!text(match.tournament_id, 100)) return NextResponse.json({ error: "Choose a tournament for the match." }, { status: 400 });
+      const scheduledAt = typeof match.scheduled_at === "string" ? new Date(match.scheduled_at) : null;
+      if (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || !/(Z|[+-]\d{2}:\d{2})$/i.test(match.scheduled_at)) {
+        return NextResponse.json({ error: "Set a valid match date and time before saving." }, { status: 400 });
+      }
+      if (match.team_a_id && match.team_a_id === match.team_b_id) {
+        return NextResponse.json({ error: "A team cannot play against itself." }, { status: 400 });
+      }
+      if (match.winner_id && ![match.team_a_id, match.team_b_id].includes(match.winner_id)) {
+        return NextResponse.json({ error: "The winner must be one of the match participants." }, { status: 400 });
+      }
       const payload = {
         tournament_id: text(match.tournament_id, 100), round_number: Math.max(integer(match.round_number, 1), 1), match_number: Math.max(integer(match.match_number, 1), 1),
         team_a_id: text(match.team_a_id, 100) || null, team_b_id: text(match.team_b_id, 100) || null, winner_id: text(match.winner_id, 100) || null,
-        team_a_score: Math.max(integer(match.team_a_score), 0), team_b_score: Math.max(integer(match.team_b_score), 0), status: ["scheduled", "live", "complete"].includes(match.status) ? match.status : "scheduled", scheduled_at: match.scheduled_at || null,
+        team_a_score: Math.max(integer(match.team_a_score), 0), team_b_score: Math.max(integer(match.team_b_score), 0), status: ["scheduled", "live", "complete"].includes(match.status) ? match.status : "scheduled", scheduled_at: scheduledAt.toISOString(),
       };
       const query = match.id ? supabase.from("tournament_matches").update(payload).eq("id", match.id) : supabase.from("tournament_matches").insert(payload);
       const { error } = await query;
