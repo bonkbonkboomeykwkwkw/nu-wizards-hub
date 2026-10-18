@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import SiteNav from "@/components/SiteNav";
+import HomeInformation, { CommunitySpotlight, WIZARDS_FACEBOOK_URL } from "@/components/HomeInformation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getGameBackgroundStyle } from "@/lib/game-art";
 
@@ -75,7 +76,7 @@ export default function HomePage() {
         Account created. Check your inbox and confirm your email before logging in to register your team.
       </div>}
       {registrationNotice && <div role="status" className="border-b border-emerald-700 bg-emerald-950/70 px-4 py-4 text-center text-sm text-emerald-100">
-        Registration complete for <strong>{registrationNotice}</strong>. Your confirmation has been sent to the captain email.
+        Registration complete for <strong>{registrationNotice}</strong>. Keep your receipt ID to check your registration.
       </div>}
       <div className="border-b border-slate-800 bg-slate-900 px-4 py-3 text-center text-sm">
         {checkingSession ? <span className="text-slate-400">Checking login…</span> : session?.user?.email ? (
@@ -85,24 +86,33 @@ export default function HomePage() {
         )}
       </div>
       <section className="border-b border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/50">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-28">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-500 sm:text-sm sm:tracking-[0.25em]">
-            National University · School Esports
-          </p>
-          <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight sm:mt-5 sm:text-6xl">
-            The Wizards Tournament Hub
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:mt-5 sm:text-lg sm:leading-8">
-            Tournament announcements, team registration, and live brackets for NU Wizards.
-          </p>
-          <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row">
-            <Link href="/register" className="rounded-lg bg-yellow-500 px-5 py-3 text-center font-bold text-slate-950 hover:bg-yellow-400">
-              Register your team
-            </Link>
-            <Link href="/bracketing" className="rounded-lg border border-slate-700 px-5 py-3 text-center font-bold text-slate-100 hover:border-yellow-500">
-              View brackets
-            </Link>
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.35fr_1fr]">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-500 sm:text-sm sm:tracking-[0.25em]">
+              National University · School Esports
+            </p>
+            <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight sm:mt-5 sm:text-6xl">
+              The Wizards Tournament Hub
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:mt-5 sm:text-lg sm:leading-8">
+              Find your next tournament, bring your team together, and follow every round. Your starting point for NU Wizards tournament announcements, registration, and match updates.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row">
+              <Link href="/register" className="rounded-lg bg-yellow-500 px-5 py-3 text-center font-bold text-slate-950 hover:bg-yellow-400">
+                Register your team
+              </Link>
+              <Link href="/bracketing" className="rounded-lg border border-slate-700 px-5 py-3 text-center font-bold text-slate-100 hover:border-yellow-500">
+                View brackets
+              </Link>
+            </div>
+            <nav aria-label="Homepage sections" className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-sm text-slate-300">
+              <a href="#tournaments" className="underline underline-offset-4 hover:text-yellow-400">Tournaments</a>
+              <a href="#how-to-join" className="underline underline-offset-4 hover:text-yellow-400">How to join</a>
+              <a href="#faq" className="underline underline-offset-4 hover:text-yellow-400">FAQs</a>
+              <a href="#about" className="underline underline-offset-4 hover:text-yellow-400">About & contact</a>
+            </nav>
           </div>
+          <CommunitySpotlight />
         </div>
       </section>
 
@@ -152,7 +162,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-14 sm:px-6">
+      <section id="tournaments" className="mx-auto max-w-6xl scroll-mt-6 px-4 pb-14 sm:px-6">
         <div className="mb-6">
           <p className="text-sm font-bold uppercase tracking-widest text-yellow-500">Compete with the Wizards</p>
           <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Tournaments</h2>
@@ -193,8 +203,10 @@ export default function HomePage() {
           <p className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-slate-400">No tournaments are listed yet.</p>
         ) : null}
       </section>
-      <footer className="border-t border-slate-800 px-4 py-6 text-center text-sm text-slate-500">
-        National University · Wizards Esports
+      <HomeInformation />
+      <footer className="border-t border-slate-800 px-4 py-6 text-center text-sm text-slate-400">
+        <p>NU Wizards’ Circle · Tournament Hub</p>
+        <a href={WIZARDS_FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-yellow-400 hover:text-yellow-300">Follow NU Wizards’ Circle on Facebook ↗<span className="sr-only"> (opens in a new tab)</span></a>
       </footer>
     </main>
   );
