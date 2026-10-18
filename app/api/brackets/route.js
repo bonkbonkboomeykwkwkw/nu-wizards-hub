@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { buildBracket } from "@/lib/brackets";
 
 export async function GET() {
   try {
@@ -30,21 +31,8 @@ export async function GET() {
     } else {
       publicData = data;
     }
-    const brackets = (publicData ?? []).map((tournament) => {
-      const entrants = tournament.entrants ?? [];
-      const configuredMatches = tournament.matches ?? [];
-      const matches = configuredMatches.length ? configuredMatches.map((match) => ({
-        ...match, bye: !match.teamB,
-      })) : entrants.reduce((items, team, index) => {
-        if (index % 2 === 0) items.push({ id: `1-${index / 2}`, teamA: team, teamB: entrants[index + 1] ?? null, bye: !entrants[index + 1], status: "scheduled", team_a_score: 0, team_b_score: 0 });
-        return items;
-      }, []);
-      const rounds = matches.length ? Object.values(matches.reduce((groups, match) => {
-        const round = match.round_number ?? 1; groups[round] ??= { round, matches: [] }; groups[round].matches.push(match); return groups;
-      }, {})) : [];
-      return { ...tournament, entrants, rounds };
-    });
-    return NextResponse.json({ brackets });
+    const brackets = (publicData ?? []).map(buildBracket);
+    return NextResponse.json({ brackets }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load brackets." }, { status: 500 });
   }
