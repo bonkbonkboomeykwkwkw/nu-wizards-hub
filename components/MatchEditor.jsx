@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { formatMatchSchedule, fromMatchDateInput, toMatchDateInput } from "@/lib/match-schedule";
+import { formatMatchSchedule, toMatchDateInput } from "@/lib/match-schedule";
+import { resolveScheduleInput, validateScheduleDate } from "@/lib/schedule-validation";
+import ScheduleDateInput from "@/components/ScheduleDateInput";
 
 const fieldClass = "mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-base text-slate-100 focus-visible:outline-2 focus-visible:outline-yellow-400";
 const emptyMatch = { tournament_id: "", round_number: 1, match_number: 1, team_a_id: "", team_b_id: "", winner_id: "", team_a_score: 0, team_b_score: 0, status: "scheduled", scheduled_at: "" };
@@ -9,6 +11,7 @@ const emptyMatch = { tournament_id: "", round_number: 1, match_number: 1, team_a
 export default function MatchEditor({ tournaments, teams, matches, busy, onSave }) {
   const [match, setMatch] = useState(emptyMatch);
   const [error, setError] = useState("");
+  const previousDate = matches.find((item) => item.id === match.id)?.scheduled_at;
   const teamsForMatch = teams.filter((team) => team.tournament_id === match.tournament_id);
   const participants = teamsForMatch.filter((team) => [match.team_a_id, match.team_b_id].includes(team.id));
 
@@ -18,8 +21,10 @@ export default function MatchEditor({ tournaments, teams, matches, busy, onSave 
   async function submit(event) {
     event.preventDefault();
     setError("");
-    const scheduledAt = fromMatchDateInput(new FormData(event.currentTarget).get("scheduled_at"));
+    const scheduledAt = resolveScheduleInput(new FormData(event.currentTarget).get("scheduled_at"), previousDate);
     if (!scheduledAt) { setError("Choose a valid match date and time in Philippine time."); return; }
+    const dateError = validateScheduleDate(scheduledAt, { previous: previousDate, required: true, label: "Match date and time" });
+    if (dateError) { setError(dateError); return; }
     if (match.team_a_id && match.team_a_id === match.team_b_id) { setError("Choose two different teams for this match."); return; }
     if (await onSave("saveMatch", { match: { ...match, scheduled_at: scheduledAt } })) reset();
   }
@@ -29,6 +34,7 @@ export default function MatchEditor({ tournaments, teams, matches, busy, onSave 
       <h2 className="text-xl font-bold text-yellow-400">Match schedules & results</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Assign teams to a round and match, set their date and time, then save. Both teams see the same schedule on the public brackets page. Change the status to Live when play starts and Completed when it ends.</p>
       <p className="mt-2 text-sm font-semibold text-yellow-300">All match times are entered in Philippine time (PHT, UTC+8).</p>
+      <p id="match-date-help" className="mt-2 text-sm text-slate-300">New or changed schedules must be today at a time that has not passed, or in the future. Keep an existing past schedule unchanged when recording results.</p>
       {match.id && <p className="mt-4 text-sm text-slate-200">Editing round {match.round_number}, match {match.match_number}. Save changes or cancel to add a different match.</p>}
       <form onSubmit={submit} className="mt-5">
         <fieldset disabled={busy} className="grid gap-4 disabled:opacity-60 md:grid-cols-3">
@@ -37,7 +43,7 @@ export default function MatchEditor({ tournaments, teams, matches, busy, onSave 
           <label className="text-sm">Round<input required className={fieldClass} type="number" min="1" value={match.round_number} onChange={(event) => update("round_number", event.target.value)} /></label>
           <label className="text-sm">Match number<input required className={fieldClass} type="number" min="1" value={match.match_number} onChange={(event) => update("match_number", event.target.value)} /></label>
           {[["team_a_id", "Team A"], ["team_b_id", "Team B"]].map(([key, label]) => <label key={key} className="text-sm">{label}<select className={fieldClass} value={match[key]} onChange={(event) => setMatch({ ...match, [key]: event.target.value, winner_id: "" })}><option value="">To be confirmed</option>{teamsForMatch.map((team) => <option key={team.id} value={team.id}>{team.team_name}</option>)}</select></label>)}
-          <label className="text-sm">Match date & time (PHT)<input required name="scheduled_at" type="datetime-local" className={fieldClass} value={match.scheduled_at} onChange={(event) => update("scheduled_at", event.target.value)} /></label>
+          <label className="text-sm">Match date & time (PHT)<ScheduleDateInput required name="scheduled_at" aria-describedby="match-date-help" previous={previousDate} className={fieldClass} value={match.scheduled_at} onChange={(event) => update("scheduled_at", event.target.value)} /></label>
           <label className="text-sm">Status<select className={fieldClass} value={match.status} onChange={(event) => update("status", event.target.value)}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="complete">Completed</option></select></label>
           {[["team_a_score", "Team A score"], ["team_b_score", "Team B score"]].map(([key, label]) => <label key={key} className="text-sm">{label}<input required className={fieldClass} type="number" min="0" value={match[key]} onChange={(event) => update(key, event.target.value)} /></label>)}
           <label className="text-sm">Winner<select className={fieldClass} value={match.winner_id} onChange={(event) => update("winner_id", event.target.value)}><option value="">No winner yet</option>{participants.map((team) => <option key={team.id} value={team.id}>{team.team_name}</option>)}</select></label>
