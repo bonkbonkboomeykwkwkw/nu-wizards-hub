@@ -22,7 +22,7 @@ export default function MatchCard({ match }) {
       <div className="space-y-3">
         {[[match.teamA, match.team_a_score], [match.teamB, match.team_b_score]].map(([team, score], index) => (
           <div key={index} className="flex items-start justify-between gap-4">
-            <span className={`min-w-0 break-words font-semibold ${team && match.winner?.id === team.id ? "text-emerald-300" : "text-slate-100"}`}>{team?.team_name || (match.bye && index === 1 ? "Bye" : "Opponent to be confirmed")}</span>
+            <span className={`min-w-0 break-words font-semibold ${team && match.winner?.id === team.id ? "text-emerald-300" : "text-slate-100"}`}>{team?.team_name || (match.bye && index === 1 ? "Bye" : match.round_number > 1 ? `Winner of Round ${match.round_number - 1}, Match ${(match.match_number - 1) * 2 + index + 1}` : "Team to be confirmed")}</span>
             <span aria-label={showScores ? `Score ${score ?? 0}` : "Not played"} className="shrink-0 tabular-nums text-slate-300">{showScores ? score ?? 0 : "—"}</span>
           </div>
         ))}

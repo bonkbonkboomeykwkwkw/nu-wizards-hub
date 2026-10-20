@@ -128,16 +128,26 @@ export async function POST(request) {
       if (match.winner_id && ![match.team_a_id, match.team_b_id].includes(match.winner_id)) {
         return NextResponse.json({ error: "The winner must be one of the match participants." }, { status: 400 });
       }
-      const payload = {
-        tournament_id: text(match.tournament_id, 100), round_number: Math.max(integer(match.round_number, 1), 1), match_number: Math.max(integer(match.match_number, 1), 1),
-        team_a_id: text(match.team_a_id, 100) || null, team_b_id: text(match.team_b_id, 100) || null, winner_id: text(match.winner_id, 100) || null,
-        team_a_score: Math.max(integer(match.team_a_score), 0), team_b_score: Math.max(integer(match.team_b_score), 0), status: ["scheduled", "live", "complete"].includes(match.status) ? match.status : "scheduled", scheduled_at: scheduledAt.toISOString(),
-      };
-      const query = match.id ? supabase.from("tournament_matches").update(payload).eq("id", match.id) : supabase.from("tournament_matches").insert(payload);
-      const { error } = await query;
+      const status = ["scheduled", "live", "complete"].includes(match.status) ? match.status : "scheduled";
+      if (status === "complete" && !match.winner_id) return NextResponse.json({ error: "Choose the winner before marking the match complete." }, { status: 400 });
+      if (status !== "complete" && match.winner_id) return NextResponse.json({ error: "Mark the match complete to record its winner." }, { status: 400 });
+      const { data: advancement, error } = await supabase.rpc("admin_save_match_and_advance", {
+        p_match_id: text(match.id, 100) || null,
+        p_tournament_id: text(match.tournament_id, 100),
+        p_round_number: Math.max(integer(match.round_number, 1), 1),
+        p_match_number: Math.max(integer(match.match_number, 1), 1),
+        p_team_a_id: text(match.team_a_id, 100) || null,
+        p_team_b_id: text(match.team_b_id, 100) || null,
+        p_winner_id: text(match.winner_id, 100) || null,
+        p_team_a_score: Math.max(integer(match.team_a_score), 0),
+        p_team_b_score: Math.max(integer(match.team_b_score), 0),
+        p_status: status,
+        p_scheduled_at: scheduledAt?.toISOString() ?? null,
+      });
       if (error) throw error;
+      return NextResponse.json({ success: true, advancement });
     } else if (body.action === "deleteMatch") {
-      const { error } = await supabase.from("tournament_matches").delete().eq("id", text(body.id, 100));
+      const { error } = await supabase.rpc("admin_delete_match_and_rewind", { p_match_id: text(body.id, 100) });
       if (error) throw error;
     } else if (body.action === "saveProfile") {
       const profile = body.profile ?? {};
@@ -162,9 +172,14 @@ export async function POST(request) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error.code === "PGRST202" || String(error.message).includes("admin_delete_user")) {
+    if (String(error.message).includes("admin_delete_user")) {
       return NextResponse.json({ error: "Apply the latest Supabase migration to enable account removal." }, { status: 503 });
     }
+    if (error.code === "42883" || String(error.message).includes("admin_save_match_and_advance") || String(error.message).includes("admin_delete_match_and_rewind")) {
+      return NextResponse.json({ error: "Apply the bracket progression migration in Supabase before saving or deleting matches." }, { status: 503 });
+    }
+    if (error.code === "23514") return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error.code === "22023") return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ error: error.message || "Could not save your changes." }, { status: 500 });
   }
 }

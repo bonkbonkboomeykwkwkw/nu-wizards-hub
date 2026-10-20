@@ -36,7 +36,12 @@ export default function AdminPage() {
       const headers = await authHeaders(); if (!headers) throw new Error("Log in again to continue.");
       const response = await fetch("/api/admin", { method: "POST", headers, body: JSON.stringify({ action, ...payload }) }); const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not save changes.");
-      setMessage(action === "deleteProfile" ? "Account removed." : "Saved."); await load();
+      if (action === "deleteProfile") setMessage("Account removed.");
+      else if (action === "saveMatch" && result.advancement?.advanced) setMessage(`Match saved. Winner advanced to Round ${result.advancement.round_number}, Match ${result.advancement.match_number}, Team ${result.advancement.slot === "team_a" ? "A" : "B"}.`);
+      else if (action === "saveMatch" && result.advancement?.champion) setMessage("Match saved. The winner is the tournament champion.");
+      else if (action === "saveMatch") setMessage("Match saved.");
+      else setMessage("Saved.");
+      await load();
       return true;
     } catch (saveError) { setError(saveError.message); return false; } finally { setBusy(false); }
   }
@@ -59,7 +64,7 @@ export default function AdminPage() {
 
   return <main className="min-h-screen bg-slate-950 text-slate-100"><SiteNav /><section className="mx-auto max-w-7xl px-3 py-7 sm:px-6 sm:py-10">
     <p className="text-xs font-bold uppercase tracking-[.2em] text-yellow-500 sm:text-sm sm:tracking-[.25em]">NU Wizards staff</p><h1 className="mt-2 text-2xl font-black sm:text-4xl">Admin workspace</h1><p className="mt-3 max-w-3xl text-sm text-slate-400 sm:text-base">Manage tournament information, announcements, teams, live match results, and user access without editing the database manually.</p>
-    {error && <div role="alert" className="mt-6 rounded-xl border border-red-900 bg-red-950/50 p-4 text-red-200">{error}{error.includes("latest Supabase migration") ? <p className="mt-2 text-sm">In Supabase SQL Editor, run <code>supabase/migrations/202610100003_admin_delete_user.sql</code>, then refresh this page.</p> : error.includes("migration") && <p className="mt-2 text-sm">Run <code>supabase/migrations/202610100001_admin_and_registration_features.sql</code> in Supabase. Then set the first staff profile to <code>admin</code>.</p>}</div>}
+    {error && <div role="alert" className="mt-6 rounded-xl border border-red-900 bg-red-950/50 p-4 text-red-200">{error}{error.includes("bracket progression migration") ? <p className="mt-2 text-sm">In Supabase SQL Editor, run <code>supabase/migrations/202610200001_match_winner_advancement.sql</code>, then refresh this page.</p> : error.includes("latest Supabase migration") ? <p className="mt-2 text-sm">In Supabase SQL Editor, run <code>supabase/migrations/202610100003_admin_delete_user.sql</code>, then refresh this page.</p> : error.includes("migration") && <p className="mt-2 text-sm">Run <code>supabase/migrations/202610100001_admin_and_registration_features.sql</code> in Supabase. Then set the first staff profile to <code>admin</code>.</p>}</div>}
     {message && <p role="status" className="mt-6 rounded-xl border border-emerald-800 bg-emerald-950/50 p-4 text-emerald-200">{message}</p>}
     {!data ? <p className="mt-8 text-slate-400">Loading workspace…</p> : <div className="mt-8 grid gap-7">
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-7"><h2 className="text-lg font-bold text-yellow-400 sm:text-xl">Events and tournament details</h2><p className="mt-1 text-sm text-slate-400">Location, schedule, registration status, and team rules are visible to students.</p>

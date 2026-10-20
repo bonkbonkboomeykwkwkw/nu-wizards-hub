@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import SiteNav from "@/components/SiteNav";
 import GameArt from "@/components/GameArt";
 import MatchCard from "@/components/MatchCard";
-import { matchesStatusFilter } from "@/lib/match-schedule";
 
 export default function BracketingPage() {
   const [brackets, setBrackets] = useState([]);
@@ -15,7 +14,6 @@ export default function BracketingPage() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [teamSearch, setTeamSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,12 +48,10 @@ export default function BracketingPage() {
     visibleRounds: bracket.rounds.map((round) => ({
       ...round,
       matches: round.matches.filter((match) => {
-        const matchesTeam = !query || [match.teamA, match.teamB].some((team) => team?.team_name.toLocaleLowerCase().includes(query));
-        const matchesStatus = matchesStatusFilter(match, statusFilter);
-        return matchesTeam && matchesStatus;
+        return !query || [match.teamA, match.teamB].some((team) => team?.team_name.toLocaleLowerCase().includes(query));
       }),
     })).filter((round) => round.matches.length),
-  })).filter((bracket) => (!query && statusFilter === "all") || bracket.visibleRounds.length);
+  })).filter((bracket) => !query || bracket.visibleRounds.length);
 
   function refresh() { setRefreshing(true); setRefreshKey((value) => value + 1); }
 
@@ -69,16 +65,11 @@ export default function BracketingPage() {
           <label className="min-w-0 flex-1 text-sm font-semibold">Find your team
             <input type="search" value={teamSearch} onChange={(event) => setTeamSearch(event.target.value)} placeholder="Enter a team name" className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-3 text-base font-normal text-white placeholder:text-slate-400 focus-visible:outline-2 focus-visible:outline-yellow-400" />
           </label>
-          <label className="text-sm font-semibold">Match status
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-3 text-base font-normal focus-visible:outline-2 focus-visible:outline-yellow-400">
-              <option value="all">All matches</option><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="complete">Completed</option>
-            </select>
-          </label>
           <button type="button" onClick={refresh} disabled={refreshing || loading} className="min-h-12 rounded-lg border border-slate-600 px-5 py-3 font-semibold hover:border-yellow-400 focus-visible:outline-2 focus-visible:outline-yellow-400 disabled:opacity-50">{refreshing ? "Refreshing…" : "Refresh matches"}</button>
         </div>
         <p className="mt-3 text-xs leading-6 text-slate-400">Updates every 30 seconds while this page is open.{updatedAt && ` Last updated ${updatedAt.toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit", second: "2-digit" })} PHT.`}</p>
         {error && <div role="alert" className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error} {updatedAt ? "Showing the last loaded matches. " : ""}<button type="button" onClick={refresh} className="underline underline-offset-4">Try again</button></div>}
-        {loading ? <p role="status" className="mt-10 text-slate-300">Loading tournament brackets…</p> : !error && brackets.length === 0 ? <div className="mt-10"><h2 className="text-xl font-bold">No tournaments listed yet</h2><Link href="/register" className="mt-4 inline-block text-yellow-400">Go to registration</Link></div> : filtered.length === 0 && brackets.length > 0 ? <div className="mt-10"><p>No matches found for these filters.</p><button type="button" onClick={() => { setTeamSearch(""); setStatusFilter("all"); }} className="mt-3 min-h-11 font-semibold text-yellow-400 underline underline-offset-4">Clear filters</button></div> : <div className="mt-8 space-y-10">
+        {loading ? <p role="status" className="mt-10 text-slate-300">Loading tournament brackets…</p> : !error && brackets.length === 0 ? <div className="mt-10"><h2 className="text-xl font-bold">No tournaments listed yet</h2><Link href="/register" className="mt-4 inline-block text-yellow-400">Go to registration</Link></div> : filtered.length === 0 && brackets.length > 0 ? <div className="mt-10"><p>No matches found for that team.</p><button type="button" onClick={() => setTeamSearch("")} className="mt-3 min-h-11 font-semibold text-yellow-400 underline underline-offset-4">Clear team search</button></div> : <div className="mt-8 space-y-10">
           {filtered.map((bracket) => (
             <article key={bracket.id} className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
               <GameArt name={bracket.game_name} wide />
