@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase/auth";
+import { validateScheduleDate } from "@/lib/schedule-validation";
 
 const text = (value, maxLength = 500) => typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 const integer = (value, fallback = 0) => Number.isInteger(Number(value)) ? Number(value) : fallback;
@@ -49,10 +50,22 @@ export async function POST(request) {
   try {
     if (body.action === "saveTournament") {
       const tournament = body.tournament ?? {};
+      let previous;
+      if (tournament.id) {
+        const { data, error } = await supabase.from("tournaments").select("starts_at, registration_closes_at").eq("id", tournament.id).maybeSingle();
+        if (error) throw error;
+        if (!data) return NextResponse.json({ error: "Tournament not found. Refresh the workspace and try again." }, { status: 404 });
+        previous = data;
+      }
+      const now = Date.now();
+      for (const [key, label] of [["starts_at", "Tournament start"], ["registration_closes_at", "Registration deadline"]]) {
+        const error = validateScheduleDate(tournament[key], { previous: previous?.[key], label, now });
+        if (error) return NextResponse.json({ error }, { status: 400 });
+      }
       const payload = {
         title: text(tournament.title, 120), game_name: text(tournament.game_name, 80), team_format: text(tournament.team_format, 80),
         max_team_size: Math.min(Math.max(integer(tournament.max_team_size, 1), 1), 20), registration_status: text(tournament.registration_status, 30) || "Closed",
-        location: text(tournament.location, 200) || null, starts_at: tournament.starts_at || null, registration_closes_at: tournament.registration_closes_at || null, details: text(tournament.details, 2000) || null,
+        location: text(tournament.location, 200) || null, starts_at: tournament.starts_at ? new Date(tournament.starts_at).toISOString() : null, registration_closes_at: tournament.registration_closes_at ? new Date(tournament.registration_closes_at).toISOString() : null, details: text(tournament.details, 2000) || null,
       };
       if (!payload.title) return NextResponse.json({ error: "Tournament title is required." }, { status: 400 });
       const query = tournament.id ? supabase.from("tournaments").update(payload).eq("id", tournament.id) : supabase.from("tournaments").insert(payload);
@@ -99,10 +112,16 @@ export async function POST(request) {
     } else if (body.action === "saveMatch") {
       const match = body.match ?? {};
       if (!text(match.tournament_id, 100)) return NextResponse.json({ error: "Choose a tournament for the match." }, { status: 400 });
-      const scheduledAt = typeof match.scheduled_at === "string" ? new Date(match.scheduled_at) : null;
-      if (!scheduledAt || Number.isNaN(scheduledAt.getTime()) || !/(Z|[+-]\d{2}:\d{2})$/i.test(match.scheduled_at)) {
-        return NextResponse.json({ error: "Set a valid match date and time before saving." }, { status: 400 });
+      let previous;
+      if (match.id) {
+        const { data, error } = await supabase.from("tournament_matches").select("scheduled_at").eq("id", match.id).maybeSingle();
+        if (error) throw error;
+        if (!data) return NextResponse.json({ error: "Match not found. Refresh the workspace and try again." }, { status: 404 });
+        previous = data;
       }
+      const dateError = validateScheduleDate(match.scheduled_at, { previous: previous?.scheduled_at, required: true, label: "Match date and time" });
+      if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
+      const scheduledAt = new Date(match.scheduled_at);
       if (match.team_a_id && match.team_a_id === match.team_b_id) {
         return NextResponse.json({ error: "A team cannot play against itself." }, { status: 400 });
       }
