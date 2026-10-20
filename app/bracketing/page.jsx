@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import SiteNav from "@/components/SiteNav";
 import GameArt from "@/components/GameArt";
 import MatchCard from "@/components/MatchCard";
-import { getMatchState } from "@/lib/match-schedule";
+import { matchesStatusFilter } from "@/lib/match-schedule";
 
 export default function BracketingPage() {
   const [brackets, setBrackets] = useState([]);
@@ -51,7 +51,7 @@ export default function BracketingPage() {
       ...round,
       matches: round.matches.filter((match) => {
         const matchesTeam = !query || [match.teamA, match.teamB].some((team) => team?.team_name.toLocaleLowerCase().includes(query));
-        const matchesStatus = statusFilter === "all" || getMatchState(match).key === statusFilter;
+        const matchesStatus = matchesStatusFilter(match, statusFilter);
         return matchesTeam && matchesStatus;
       }),
     })).filter((round) => round.matches.length),
@@ -71,7 +71,7 @@ export default function BracketingPage() {
           </label>
           <label className="text-sm font-semibold">Match status
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-3 text-base font-normal focus-visible:outline-2 focus-visible:outline-yellow-400">
-              <option value="all">All matches</option><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="complete">Completed</option><option value="pending">Schedule pending</option><option value="preview">Pairing previews</option><option value="bye">Byes</option>
+              <option value="all">All matches</option><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="complete">Completed</option>
             </select>
           </label>
           <button type="button" onClick={refresh} disabled={refreshing || loading} className="min-h-12 rounded-lg border border-slate-600 px-5 py-3 font-semibold hover:border-yellow-400 focus-visible:outline-2 focus-visible:outline-yellow-400 disabled:opacity-50">{refreshing ? "Refreshing…" : "Refresh matches"}</button>
